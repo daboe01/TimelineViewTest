@@ -49,8 +49,8 @@
     for(var i = 0; i < l; i++)
     {
         out.push(@{'lane': testData[i][0],
-                   'date':   [[CPDate alloc] initWithShortString:testData[i][1]],
-                   'value':  testData[i][2]})
+                   'date': [[CPDate alloc] initWithShortString:testData[i][1]],
+                   'value':testData[i][2]})
     }
     return out;
 }
