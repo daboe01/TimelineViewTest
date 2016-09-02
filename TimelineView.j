@@ -30,7 +30,6 @@ var RULER_TICK_PADDING = 5;
 // <!> remove padding by check whether label fits
 // <!> also prevent overplotting of labels if with is to high
 
-TLVColorCodes=["8DD3C7","BEBADA","FB8072","80B1D3","FDB462","B3DE69","FCCDE5","D9D9D9","BC80BD"]; // brewer.pal(10, "Set3") (RColorBrewer)
 
 @implementation TimeLane : CPView
 {
@@ -38,6 +37,12 @@ TLVColorCodes=["8DD3C7","BEBADA","FB8072","80B1D3","FDB462","B3DE69","FCCDE5","D
     BOOL         _hasVerticalRuler @accessors(property = hasVerticalRuler);
     TimelineView _timelineView @accessors(property = timelineView);
     CPUInteger   _styleFlags @accessors(property=styleFlags);
+    CPColor      _laneColor;
+}
+
++ (CPArray) laneColorCodes
+{
+    return ["8DD3C7","BEBADA","FB8072","80B1D3","FDB462","B3DE69","FCCDE5","D9D9D9","BC80BD"]; // brewer.pal(10, "Set3") (RColorBrewer)
 }
 
 - (void)addStyleFlags:(CPUInteger)flagsToAdd
@@ -65,7 +70,7 @@ TLVColorCodes=["8DD3C7","BEBADA","FB8072","80B1D3","FDB462","B3DE69","FCCDE5","D
 
             if(first)
             {   first=NO;
-                CGContextSetStrokeColor(context, [CPColor blueColor]);
+                CGContextSetStrokeColor(context, _laneColor);
                 CGContextBeginPath(context);
                 CGContextMoveToPoint(context, o.x, o.y);
             } else
@@ -93,6 +98,7 @@ TLVColorCodes=["8DD3C7","BEBADA","FB8072","80B1D3","FDB462","B3DE69","FCCDE5","D
     if  (self = [super initWithFrame:aFrame])
     {
         _styleFlags |= TLVLanePolygon;
+        _laneColor = [CPColor blueColor]
     }
 
     return self;
@@ -111,8 +117,9 @@ TLVColorCodes=["8DD3C7","BEBADA","FB8072","80B1D3","FDB462","B3DE69","FCCDE5","D
     CPDateFormatter _axisDateFormatter @accessors(property = axisDateFormatter);
     CPColor         _rulerTickColor @accessors(property = rulerTickColor);
     CPColor         _rulerLabelColor @accessors(property = rulerLabelColor);
-    float           _timeScale @accessors(property = timeScale);
     int             _rulerPosition @accessors(property = rulerPosition);
+    CPDate          _clipScaleLowerDate @accessors(property = clipScaleLowerDate);
+    CPDate          _clipScaleUpperDate @accessors(property = clipScaleUpperDate);
 
     CPArray         _timeLanes;
 }
@@ -129,7 +136,9 @@ TLVColorCodes=["8DD3C7","BEBADA","FB8072","80B1D3","FDB462","B3DE69","FCCDE5","D
         _timeKey = 'date';
         _valueKey = 'value';
         _laneKey = 'lane';
-        _durationKey = 'duration'
+        _durationKey = 'duration';
+        _clipScaleLowerDate = [CPDate distantPast];
+        _clipScaleUpperDate = [CPDate distantFuture];
     }
 
     return self;
@@ -139,6 +148,8 @@ TLVColorCodes=["8DD3C7","BEBADA","FB8072","80B1D3","FDB462","B3DE69","FCCDE5","D
 {
     _timeLanes.push(aTimeLane);
     [aTimeLane setLaneIdentifier:lane];
+    aTimeLane._laneColor = [CPColor colorWithHexString:[[aTimeLane class] laneColorCodes][_timeLanes.length - 1]];
+
     [aTimeLane setTimelineView:self];
     [self addSubview:aTimeLane];
     [self tile];
@@ -171,6 +182,18 @@ TLVColorCodes=["8DD3C7","BEBADA","FB8072","80B1D3","FDB462","B3DE69","FCCDE5","D
     return outarray;
 }
 
+- (void)setClipScaleLowerDate:(CPDate)aDate
+{
+    _clipScaleLowerDate = aDate;
+    [self tile];  // <!> fixme
+}
+- (void)setClipScaleUpperDate:(CPDate)aDate
+{
+    _clipScaleUpperDate = aDate;
+    [self tile]; // <!> fixme
+}
+
+// fixme: clip by _clipScaleLowerDate and _clipScaleUpperDate
 - (CPRange)getDateRange
 {
     var sortedarray = [[self objectValue] sortedArrayUsingDescriptors:[[[CPSortDescriptor alloc] initWithKey:_timeKey ascending:YES]]];
