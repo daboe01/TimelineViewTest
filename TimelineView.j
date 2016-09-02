@@ -227,6 +227,12 @@ TLVColorCodes=["8DD3C7","BEBADA","FB8072","80B1D3","FDB462","B3DE69","FCCDE5","D
         case TLVGranularityWeek:
             secondsBetween = (60*60*24);
         break;
+        case TLVGranularityMonth:
+            secondsBetween = (60*60*24*7) / 2;
+        break;
+        case TLVGranularityMonthYear:
+            secondsBetween = (60*60*24*30.5) / 2;
+        break;
     }
     numSteps = range.length / secondsBetween;
     var gapBetween = pixelWidth / numSteps;
