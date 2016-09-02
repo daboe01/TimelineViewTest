@@ -5,6 +5,9 @@
  * Copyright 2016, Your Company All rights reserved.
  */
 
+// fixme: ruler position (use symbols from CPBox?)
+// scaling support
+
 @import <Foundation/CPObject.j>
 @import <CoreText/CGContextText.j>
 
@@ -109,6 +112,7 @@ TLVColorCodes=["8DD3C7","BEBADA","FB8072","80B1D3","FDB462","B3DE69","FCCDE5","D
     CPColor         _rulerTickColor @accessors(property = rulerTickColor);
     CPColor         _rulerLabelColor @accessors(property = rulerLabelColor);
     float           _timeScale @accessors(property = timeScale);
+    int             _rulerPosition @accessors(property = rulerPosition);
 
     CPArray         _timeLanes;
 }
@@ -141,6 +145,7 @@ TLVColorCodes=["8DD3C7","BEBADA","FB8072","80B1D3","FDB462","B3DE69","FCCDE5","D
 
 // this method returns an array with dictionaries that contain (among others) x and y properties (already appropriately scaled and in the lane coordinate system)
 // <!> fixme: support scaling
+// <!> fixme: move y scaling to the lane (the lanes is also responsible for drawing any y-axis rulers)
 - (CPArray)dataForLane:(TimeLane)laneID
 {
     var inarray = [[self objectValue] filteredArrayUsingPredicate:[CPPredicate predicateWithFormat: _laneKey+" = %@", [laneID laneIdentifier]]];
