@@ -171,6 +171,9 @@ TLVColorCodes=["8DD3C7","BEBADA","FB8072","80B1D3","FDB462","B3DE69","FCCDE5","D
 
 - (void)drawRect:(CGRect)rect
 {
+    if (!_showRuler)
+        return;
+
     var drawRect = CGRectMake(0, 0, _frame.size.width, RULER_HEIGHT)
 
 // <!> fixme: intersect drawRect with rect
