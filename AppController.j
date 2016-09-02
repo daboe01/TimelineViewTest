@@ -68,6 +68,11 @@
     var myLane=[TimeLane new];
     [myLane addStyleFlags:TLVLaneCircle];
     [_tlView addLane:myLane withIdentifier:'private'];
+
+    var myLane=[TimeLane new];
+    [myLane addStyleFlags:TLVLaneCircle];
+    [_tlView addLane:myLane withIdentifier:'work'];
+
     [_tlView setObjectValue:[self _compiledTestData]];
 
     var scrollView = [[CPScrollView alloc] initWithFrame:CGRectMake(20, 20,520,510)];
