@@ -16,7 +16,7 @@ TLVLaneValueInline = 1;
 TLVLanePolygon = 2;
 TLVLaneCircle = 4;
 TLVLaneTimeRange = 8;
-TLVLaneTimeArrow = 16;
+TLVLaneTimePoint = 16;
 
 TLVGranularityDay = 1;
 TLVGranularityWeek = 2;
@@ -85,7 +85,6 @@ TLVColorCodes=["8DD3C7","BEBADA","FB8072","80B1D3","FDB462","B3DE69","FCCDE5","D
             CGContextStrokeEllipseInRect(context, myrect);
         }
     }
-
 }
 
 
