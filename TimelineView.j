@@ -5,8 +5,10 @@
  * Copyright 2016, Your Company All rights reserved.
  */
 
-// fixme: ruler position (use symbols from CPBox?)
-// scaling support
+// duration support (rectangles, stacked)
+// <!> remove padding by check whether label fits
+// <!> also prevent overplotting of labels if with is to high
+// fixme: ruler position up / down (use symbols from CPBox?)
 
 @import <Foundation/CPObject.j>
 @import <CoreText/CGContextText.j>
@@ -27,9 +29,6 @@ TLVGranularityYear = 5;
 var RULER_HEIGHT = 32;
 var TICK_HEIGHT = 5;
 var RULER_TICK_PADDING = 5;
-// <!> remove padding by check whether label fits
-// <!> also prevent overplotting of labels if with is to high
-
 
 @implementation TimeLane : CPView
 {
@@ -161,6 +160,7 @@ var RULER_TICK_PADDING = 5;
 - (CPArray)dataForLane:(TimeLane)lane
 {
     var inarray = [[self objectValue] filteredArrayUsingPredicate:[CPPredicate predicateWithFormat: _laneKey+" = %@", [lane laneIdentifier]]];
+// fixme: clip by getDateRange
     var sortedarray = [inarray sortedArrayUsingDescriptors:[[[CPSortDescriptor alloc] initWithKey:_valueKey ascending:YES]]];
     var minY = [[sortedarray firstObject] valueForKey:_valueKey];
     var maxY = [[sortedarray lastObject] valueForKey:_valueKey];
