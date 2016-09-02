@@ -134,10 +134,10 @@ TLVColorCodes=["8DD3C7","BEBADA","FB8072","80B1D3","FDB462","B3DE69","FCCDE5","D
     return self;
 }
 
-- (void)addLane:(TimeLane)aTimeLane withIdentifier:(CPString)laneID
+- (void)addLane:(TimeLane)aTimeLane withIdentifier:(CPString)lane
 {
     _timeLanes.push(aTimeLane);
-    [aTimeLane setLaneIdentifier:laneID];
+    [aTimeLane setLaneIdentifier:lane];
     [aTimeLane setTimelineView:self];
     [self addSubview:aTimeLane];
     [self tile];
@@ -146,9 +146,9 @@ TLVColorCodes=["8DD3C7","BEBADA","FB8072","80B1D3","FDB462","B3DE69","FCCDE5","D
 // this method returns an array with dictionaries that contain (among others) x and y properties (already appropriately scaled and in the lane coordinate system)
 // <!> fixme: support scaling
 // <!> fixme: move y scaling to the lane (the lanes is also responsible for drawing any y-axis rulers)
-- (CPArray)dataForLane:(TimeLane)laneID
+- (CPArray)dataForLane:(TimeLane)lane
 {
-    var inarray = [[self objectValue] filteredArrayUsingPredicate:[CPPredicate predicateWithFormat: _laneKey+" = %@", [laneID laneIdentifier]]];
+    var inarray = [[self objectValue] filteredArrayUsingPredicate:[CPPredicate predicateWithFormat: _laneKey+" = %@", [lane laneIdentifier]]];
     var sortedarray = [inarray sortedArrayUsingDescriptors:[[[CPSortDescriptor alloc] initWithKey:_valueKey ascending:YES]]];
     var minY = [[sortedarray firstObject] valueForKey:_valueKey];
     var maxY = [[sortedarray lastObject] valueForKey:_valueKey];
@@ -157,7 +157,7 @@ TLVColorCodes=["8DD3C7","BEBADA","FB8072","80B1D3","FDB462","B3DE69","FCCDE5","D
     var length = inarray.length;
     var range = [self getDateRange];
     var pixelWidth = _frame.size.width;
-    var pixelHeight = _frame.size.height;
+    var pixelHeight = lane._frame.size.height;
 
     for (var i = 0; i < length; i++)
     {
@@ -167,7 +167,6 @@ TLVColorCodes=["8DD3C7","BEBADA","FB8072","80B1D3","FDB462","B3DE69","FCCDE5","D
        var y = pixelHeight - (((yraw - minY) / (maxY - minY)) * pixelHeight);
        outarray.push({"x":x, "y":y});
     }
-
     return outarray;
 }
 
