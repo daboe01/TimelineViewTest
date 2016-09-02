@@ -66,6 +66,7 @@
     _tlView = [[TimelineView alloc] initWithFrame:CGRectMake(0, 0,500,500)];
     [_tlView setLaneKey:'lane']
     var myLane=[TimeLane new];
+    [myLane addStyleFlags:TLVLaneCircle];
     [_tlView addLane:myLane withIdentifier:'private'];
     [_tlView setObjectValue:[self _compiledTestData]];
 

@@ -8,9 +8,12 @@
 @import <Foundation/CPObject.j>
 @import <CoreText/CGContextText.j>
 
-TLVLaneStylePlain=0;
-TLVLaneValueInline=1;
-TLVLanePolygon=2;
+TLVLaneStylePlain = 0;
+TLVLaneValueInline = 1;
+TLVLanePolygon = 2;
+TLVLaneCircle = 4;
+TLVLaneTimeRange = 8;
+TLVLaneTimeArrow = 16;
 
 TLVGranularityDay = 1;
 TLVGranularityWeek = 2;
@@ -34,15 +37,24 @@ TLVColorCodes=["8DD3C7","BEBADA","FB8072","80B1D3","FDB462","B3DE69","FCCDE5","D
     CPUInteger   _styleFlags @accessors(property=styleFlags);
 }
 
+- (void)addStyleFlags:(CPUInteger)flagsToAdd
+{
+    _styleFlags |= flagsToAdd
+}
+
+- (void)removeStyleFlags:(CPUInteger)flagsToRemove
+{
+    _styleFlags &= ~flagsToRemove
+}
+
 - (void)drawRect:(CGRect)rect
 {
     var context = [[CPGraphicsContext currentContext] graphicsPort];
+    var myData = [_timelineView dataForLane:self];
+    var n =  [myData count];
 
     if(_styleFlags & TLVLanePolygon)
-    {   var myData = [_timelineView dataForLane:self];
-
-        var n =  [myData count];
-
+    {
         var first=YES;
         for(var i = 0; i < n; i++) 
         {
@@ -60,6 +72,17 @@ TLVColorCodes=["8DD3C7","BEBADA","FB8072","80B1D3","FDB462","B3DE69","FCCDE5","D
         CGContextSetLineWidth(context, 1);
         CGContextStrokePath(context);
     }
+
+    if(_styleFlags & TLVLaneCircle)
+    {
+        for(var i = 0; i < n; i++) 
+        {
+            var o = myData[i];
+            var myrect = CPMakeRect(o.x - 2, o.y - 2,  4, 4);
+            CGContextStrokeEllipseInRect(context, myrect);
+        }
+    }
+
 }
 
 
