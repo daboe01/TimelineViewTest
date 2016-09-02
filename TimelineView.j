@@ -104,6 +104,7 @@ TLVColorCodes=["8DD3C7","BEBADA","FB8072","80B1D3","FDB462","B3DE69","FCCDE5","D
 @implementation TimelineView : CPControl
 {
     CPString        _timeKey @accessors(property = timeKey);
+    CPString        _durationKey @accessors(property = durationKey);
     CPString        _laneKey @accessors(property = laneKey);
     CPString        _valueKey @accessors(property = valueKey);
     BOOL            _showRuler @accessors(property = showRuler);
@@ -128,6 +129,7 @@ TLVColorCodes=["8DD3C7","BEBADA","FB8072","80B1D3","FDB462","B3DE69","FCCDE5","D
         _timeKey = 'date';
         _valueKey = 'value';
         _laneKey = 'lane';
+        _durationKey = 'duration'
     }
 
     return self;
