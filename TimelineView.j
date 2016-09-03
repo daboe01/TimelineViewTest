@@ -9,6 +9,7 @@
 // <!> remove padding by check whether label fits
 // <!> also prevent overplotting of labels if with is to high
 // fixme: ruler position up / down (use symbols from CPBox?)
+// todo: support draggable clickhandles in the ruler for cropscaling as in quicktime
 
 @import <Foundation/CPObject.j>
 @import <CoreText/CGContextText.j>
