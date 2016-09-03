@@ -10,6 +10,7 @@
 // <!> also prevent overplotting of labels if with is to high
 // fixme: ruler position up / down (use symbols from CPBox?)
 // todo: support draggable clickhandles in the ruler for cropscaling as in quicktime
+// support ghost mode during dragging (flag: _shoudDrawClipscaled)
 
 @import <Foundation/CPObject.j>
 @import <CoreText/CGContextText.j>
