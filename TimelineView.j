@@ -6,8 +6,6 @@
  */
 
 // duration support (rectangles, stacked)
-// <!> remove padding by check whether label fits
-// <!> also prevent overplotting of labels if with is to high
 // fixme: ruler position up / down (use symbols from CPBox?)
 // todo: support draggable clickhandles in the ruler for cropscaling as in quicktime
 // support ghost mode during dragging (flag: _shoudDrawClipscaled)
@@ -30,7 +28,6 @@ TLVGranularityYear = 5;
 
 var RULER_HEIGHT = 32;
 var TICK_HEIGHT = 5;
-var RULER_TICK_PADDING = 5;
 
 @implementation TimeLane : CPView
 {
@@ -252,14 +249,19 @@ var RULER_TICK_PADDING = 5;
         break;
         case TLVGranularityWeek:
             secondsBetween = (60*60*24);
+            [_axisDateFormatter setDateFormat:@"DD.MM.YY"];
         break;
         case TLVGranularityMonth:
             secondsBetween = (60*60*24*7) / 2;
+            [_axisDateFormatter setDateFormat:@"MM.YY"];
         break;
         case TLVGranularityMonthYear:
             secondsBetween = (60*60*24*30.5) / 2;
+            [_axisDateFormatter setDateFormat:@"MMM YYYY"];
         break;
-    }
+        default:
+            [_axisDateFormatter setDateFormat:@"YYYY"];
+   }
     numSteps = range.length / secondsBetween;
     var gapBetween = pixelWidth / numSteps;
 
@@ -269,17 +271,18 @@ var RULER_TICK_PADDING = 5;
 
     for (var x = 0; x < pixelWidth; x += gapBetween, axisDate = [axisDate dateByAddingTimeInterval:secondsBetween])
     {
-        if (x < RULER_TICK_PADDING || x > pixelWidth - RULER_TICK_PADDING)
+        var label = [_axisDateFormatter stringFromDate:axisDate];
+        var labelSize = [label sizeWithFont:font];
+        var leftPoint=CGPointMake(x - labelSize.width / 2, RULER_HEIGHT- TICK_HEIGHT - labelSize.height);
+
+        if (leftPoint.x < 0 || leftPoint.x + labelSize.width > pixelWidth)
             continue;
 
         CGContextMoveToPoint(ctx, x, RULER_HEIGHT- TICK_HEIGHT);
         CGContextAddLineToPoint(ctx, x, RULER_HEIGHT );
-        var label = [_axisDateFormatter stringFromDate:axisDate];
-        var labelSize = [label sizeWithFont:font];
         CGContextSaveGState(ctx);
         CGContextSelectFont(ctx, font);
-        var midPoint=CGPointMake(x - labelSize.width / 2, RULER_HEIGHT- TICK_HEIGHT - labelSize.height);
-        CGContextSetTextPosition(ctx, midPoint.x, midPoint.y);
+        CGContextSetTextPosition(ctx, leftPoint.x, leftPoint.y);
         CGContextSetFillColor(ctx, _rulerLabelColor);
         CGContextSetStrokeColor(ctx, _rulerLabelColor);
         CGContextShowText(ctx, label);
