@@ -53,12 +53,13 @@
 
     for(var i = 0; i < l; i++)
     {
-        if ( testData[i][2].indexOf('-') > -1 )
+        if ( testData[i][2].indexOf('-') > -1 ) // range
             out.push(@{'lane': testData[i][0],
                        'date': [[CPDate alloc] initWithShortString:testData[i][1]],
-                       'date2': [[CPDate alloc] initWithShortString:testData[i][2]]})
+                       'date2': [[CPDate alloc] initWithShortString:testData[i][2]],
+                       'value': testData[i][3]})
        else
-            out.push(@{'lane': testData[i][0],
+            out.push(@{'lane': testData[i][0], // data only
                        'date': [[CPDate alloc] initWithShortString:testData[i][1]],
                        'value':testData[i][2]})
     }
@@ -86,7 +87,7 @@
 
     var myLane=[TimeLane new];
     [myLane setLabel:"This is a time range"]
-    [myLane addStyleFlags:TLVLaneTimeRange|TLVLaneDrawLabel];
+    [myLane addStyleFlags:TLVLaneTimeRange|TLVLaneLaneLabel|TLVLaneValueInline];
     [_tlView addLane:myLane withIdentifier:'other'];
 
     [_tlView setObjectValue:[self _compiledTestData]];

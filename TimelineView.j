@@ -5,7 +5,7 @@
  * Copyright 2016, Your Company All rights reserved.
  */
 
-// duration support (rectangles, stacked)
+// fixme: rooler labels are currently awkward (doubled)
 // fixme: prevent overplotting of time-axis labels
 // fixme: also use dateEnd to calculate time-axis
 // fixme: ruler position up / down (use symbols from CPBox?)
@@ -21,7 +21,7 @@ TLVLanePolygon = 2;
 TLVLaneCircle = 4;
 TLVLaneTimeRange = 8;
 TLVLaneTimePoint = 16;
-TLVLaneDrawLabel = 32;
+TLVLaneLaneLabel = 32;
 
 TLVGranularityDay = 1;
 TLVGranularityWeek = 2;
@@ -63,10 +63,10 @@ var TIME_RANGE_DEFAULT_HEIGHT = 16;
     var context = [[CPGraphicsContext currentContext] graphicsPort];
     var myData = [_timelineView dataForLane:self];
     var n =  [myData count];
+    var font = [CPFont systemFontOfSize:11];
 
-    if(_styleFlags & TLVLaneDrawLabel && _label)
+    if(_styleFlags & TLVLaneLaneLabel && _label)
     {
-        var font = [CPFont systemFontOfSize:11];
         var labelSize = [_label sizeWithFont:font];
         var leftPoint=CGPointMake(_frame.size.width / 2 - labelSize.width / 2, 4);
 
@@ -75,7 +75,6 @@ var TIME_RANGE_DEFAULT_HEIGHT = 16;
         CGContextSetFillColor(context, _laneColor);
         CGContextSetStrokeColor(context, _laneColor);
         CGContextShowText(context, _label);
-
     }
 
     if(_styleFlags & TLVLanePolygon)
@@ -119,6 +118,20 @@ var TIME_RANGE_DEFAULT_HEIGHT = 16;
             var o = myData[i];
             var myrect = CPMakeRect(o.x + 4, o.y + 4,  o.width - 4, TIME_RANGE_DEFAULT_HEIGHT - 4);
             CGContextStrokeRect(context, myrect);
+
+            if (_styleFlags & TLVLaneValueInline && o.value)
+            {
+                var labelSize = [o.value sizeWithFont:font];
+                var leftPoint=CGPointMake(o.x + o.width / 2 - labelSize.width / 2, o. y + TIME_RANGE_DEFAULT_HEIGHT / 2 + 1);
+
+                CGContextSaveGState(context);
+                CGContextSelectFont(context, font);
+                CGContextSetTextPosition(context, leftPoint.x, leftPoint.y);
+                CGContextSetFillColor(context, _laneColor);
+                CGContextSetStrokeColor(context, _laneColor);
+                CGContextShowText(context, o.value);
+                CGContextRestoreGState(context);
+            }
         }
     }
 }
@@ -207,11 +220,11 @@ var TIME_RANGE_DEFAULT_HEIGHT = 16;
 
     for (var i = 0; i < length; i++)
     {
-       var xraw = [inarray[i] valueForKeyPath:_timeKey + @".timeIntervalSinceReferenceDate"];
+       var xraw = [inarray[i] valueForKeyPath:_timeKey + ".timeIntervalSinceReferenceDate"];
        var x = ((xraw - range.location) / range.length) * pixelWidth;
        var yraw = [inarray[i] valueForKey:_valueKey];
        var y = pixelHeight - (((yraw - minY) / (maxY - minY)) * pixelHeight);
-       var o = {"x":x, "y":y};
+       var o = {"x":x, "y":y, "value": [inarray[i] valueForKey:_valueKey]};
        var xraw1 = [inarray[i] valueForKeyPath:_timeEndKey + @".timeIntervalSinceReferenceDate"];
        if (xraw1 !== null)
        {
