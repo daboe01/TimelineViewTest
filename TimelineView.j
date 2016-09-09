@@ -64,12 +64,24 @@ var TIME_RANGE_DEFAULT_HEIGHT = 16;
     var myData = [_timelineView dataForLane:self];
     var n =  [myData count];
 
-    if(_styleFlags & TLVLaneDrawLabel)
+    if(_styleFlags & TLVLaneDrawLabel && _label)
     {
+        var font = [CPFont systemFontOfSize:11];
+        var labelSize = [_label sizeWithFont:font];
+        var leftPoint=CGPointMake(_frame.size.width / 2 - labelSize.width / 2, 4);
+
+        CGContextSelectFont(context, font);
+        CGContextSetTextPosition(context, leftPoint.x, leftPoint.y);
+        CGContextSetFillColor(context, _laneColor);
+        CGContextSetStrokeColor(context, _laneColor);
+        CGContextShowText(context, _label);
+
     }
 
     if(_styleFlags & TLVLanePolygon)
     {
+        CGContextSetStrokeColor(context, _laneColor);
+
         var first=YES;
         for(var i = 0; i < n; i++) 
         {
@@ -77,7 +89,6 @@ var TIME_RANGE_DEFAULT_HEIGHT = 16;
 
             if(first)
             {   first=NO;
-                CGContextSetStrokeColor(context, _laneColor);
                 CGContextBeginPath(context);
                 CGContextMoveToPoint(context, o.x, o.y);
             } else
@@ -100,6 +111,9 @@ var TIME_RANGE_DEFAULT_HEIGHT = 16;
 
     if(_styleFlags & TLVLaneTimeRange)
     {
+        CGContextSetFillColor(context, _laneColor);
+        CGContextSetStrokeColor(context, _laneColor);
+
         for(var i = 0; i < n; i++) 
         {
             var o = myData[i];
@@ -250,9 +264,9 @@ var TIME_RANGE_DEFAULT_HEIGHT = 16;
 
     if (daysBetween < 2)
        return TLVGranularityDay;
-    if (daysBetween < 8)
+    if (daysBetween < 16)
        return TLVGranularityWeek;
-    if (daysBetween < 32)
+    if (daysBetween < 90	)
        return TLVGranularityMonth;
     if (daysBetween < 366)
        return TLVGranularityMonthYear;
@@ -293,11 +307,11 @@ var TIME_RANGE_DEFAULT_HEIGHT = 16;
             [_axisDateFormatter setDateFormat:@"DD.MM.YY"];
         break;
         case TLVGranularityMonth:
-            secondsBetween = (60*60*24*7) / 2;
+            secondsBetween = (60*60*24*7);
             [_axisDateFormatter setDateFormat:@"MM.YY"];
         break;
         case TLVGranularityMonthYear:
-            secondsBetween = (60*60*24*30.5) / 2;
+            secondsBetween = (60*60*24*30.5);
             [_axisDateFormatter setDateFormat:@"MMM YYYY"];
         break;
         default:
