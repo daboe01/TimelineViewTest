@@ -41,16 +41,26 @@
                    ['work',   '2006-01-04', '47'],
                    ['work',   '2006-01-05', '46'],
                    ['work',   '2006-01-06', '45'],
-                   ['work',   '2006-02-20', '44']
+                   ['work',   '2006-02-20', '44'],
+
+                   ['other',   '2006-01-01', '2006-01-04'],
+                   ['other',   '2006-01-02', '2006-01-04'],
+                   ['other',   '2006-01-07', '2006-02-04']
+
                  ];
     var out = [];
     var l = testData.length;
 
     for(var i = 0; i < l; i++)
     {
-        out.push(@{'lane': testData[i][0],
-                   'date': [[CPDate alloc] initWithShortString:testData[i][1]],
-                   'value':testData[i][2]})
+        if ( testData[i][2].indexOf('-') > -1 )
+            out.push(@{'lane': testData[i][0],
+                       'date': [[CPDate alloc] initWithShortString:testData[i][1]],
+                       'date2': [[CPDate alloc] initWithShortString:testData[i][2]]})
+       else
+            out.push(@{'lane': testData[i][0],
+                       'date': [[CPDate alloc] initWithShortString:testData[i][1]],
+                       'value':testData[i][2]})
     }
     return out;
 }
@@ -67,12 +77,16 @@
     [_tlView setLaneKey:'lane']
 
     var myLane=[TimeLane new];
-    [myLane addStyleFlags:TLVLaneCircle];
+    [myLane addStyleFlags:TLVLanePolygon|TLVLaneCircle];
     [_tlView addLane:myLane withIdentifier:'private'];
 
     var myLane=[TimeLane new];
-    [myLane addStyleFlags:TLVLaneCircle];
+    [myLane addStyleFlags:TLVLanePolygon];
     [_tlView addLane:myLane withIdentifier:'work'];
+
+    var myLane=[TimeLane new];
+    [myLane addStyleFlags:TLVLaneTimeRange];
+    [_tlView addLane:myLane withIdentifier:'other'];
 
     [_tlView setObjectValue:[self _compiledTestData]];
 

@@ -6,6 +6,8 @@
  */
 
 // duration support (rectangles, stacked)
+// fixme: prevent overplotting of time-axis labels
+// fixme: also use dateEnd to calculate time-axis
 // fixme: ruler position up / down (use symbols from CPBox?)
 // todo: support draggable clickhandles in the ruler for cropscaling as in quicktime
 // support ghost mode during dragging (flag: _shoudDrawClipscaled)
@@ -19,6 +21,7 @@ TLVLanePolygon = 2;
 TLVLaneCircle = 4;
 TLVLaneTimeRange = 8;
 TLVLaneTimePoint = 16;
+TLVLaneDrawLabel = 32;
 
 TLVGranularityDay = 1;
 TLVGranularityWeek = 2;
@@ -28,10 +31,12 @@ TLVGranularityYear = 5;
 
 var RULER_HEIGHT = 32;
 var TICK_HEIGHT = 5;
+var TIME_RANGE_DEFAULT_HEIGHT = 16;
 
 @implementation TimeLane : CPView
 {
     CPString     _laneIdentifier @accessors(property = laneIdentifier);
+    CPString     _label @accessors(property = label);
     BOOL         _hasVerticalRuler @accessors(property = hasVerticalRuler);
     TimelineView _timelineView @accessors(property = timelineView);
     CPUInteger   _styleFlags @accessors(property=styleFlags);
@@ -58,6 +63,10 @@ var TICK_HEIGHT = 5;
     var context = [[CPGraphicsContext currentContext] graphicsPort];
     var myData = [_timelineView dataForLane:self];
     var n =  [myData count];
+
+    if(_styleFlags & TLVLaneDrawLabel)
+    {
+    }
 
     if(_styleFlags & TLVLanePolygon)
     {
@@ -88,6 +97,16 @@ var TICK_HEIGHT = 5;
             CGContextStrokeEllipseInRect(context, myrect);
         }
     }
+
+    if(_styleFlags & TLVLaneTimeRange)
+    {
+        for(var i = 0; i < n; i++) 
+        {
+            var o = myData[i];
+            var myrect = CPMakeRect(o.x + 4, o.y + 4,  o.width - 4, TIME_RANGE_DEFAULT_HEIGHT - 4);
+            CGContextStrokeRect(context, myrect);
+        }
+    }
 }
 
 
@@ -95,7 +114,6 @@ var TICK_HEIGHT = 5;
 {
     if  (self = [super initWithFrame:aFrame])
     {
-        _styleFlags |= TLVLanePolygon;
         _laneColor = [CPColor blueColor]
     }
 
@@ -108,6 +126,8 @@ var TICK_HEIGHT = 5;
 @implementation TimelineView : CPControl
 {
     CPString        _timeKey @accessors(property = timeKey);
+    CPString        _timeEndKey @accessors(property = timeEndKey);
+
     CPString        _durationKey @accessors(property = durationKey);
     CPString        _laneKey @accessors(property = laneKey);
     CPString        _valueKey @accessors(property = valueKey);
@@ -132,6 +152,7 @@ var TICK_HEIGHT = 5;
         _rulerTickColor = [CPColor grayColor];
         _rulerLabelColor = [CPColor grayColor];
         _timeKey = 'date';
+        _timeEndKey = 'date2';
         _valueKey = 'value';
         _laneKey = 'lane';
         _durationKey = 'duration';
@@ -176,7 +197,27 @@ var TICK_HEIGHT = 5;
        var x = ((xraw - range.location) / range.length) * pixelWidth;
        var yraw = [inarray[i] valueForKey:_valueKey];
        var y = pixelHeight - (((yraw - minY) / (maxY - minY)) * pixelHeight);
-       outarray.push({"x":x, "y":y});
+       var o = {"x":x, "y":y};
+       var xraw1 = [inarray[i] valueForKeyPath:_timeEndKey + @".timeIntervalSinceReferenceDate"];
+       if (xraw1 !== null)
+       {
+           var x1 = ((xraw1 - range.location) / range.length) * pixelWidth;
+           o.width = x1 - x;
+           var baselineY = pixelHeight - TIME_RANGE_DEFAULT_HEIGHT - 5;
+           o.y = baselineY;
+
+           // stack overlapping rectangles
+           var length_o = outarray.length;
+           for (var j = 0; j < length_o; j++)
+           {
+               var existingRect = CGRectMake(outarray[j].x, outarray[j].y - TIME_RANGE_DEFAULT_HEIGHT, outarray[j].width, TIME_RANGE_DEFAULT_HEIGHT);
+               var newRect = CGRectMake(o.x, o.y - TIME_RANGE_DEFAULT_HEIGHT, o.width, TIME_RANGE_DEFAULT_HEIGHT);
+
+               if (CGRectIntersectsRect(newRect, existingRect) )
+                   o.y -= TIME_RANGE_DEFAULT_HEIGHT - 2;
+           }
+       }
+       outarray.push(o);
     }
     return outarray;
 }
