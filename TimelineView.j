@@ -7,7 +7,7 @@
 
 // fixme: lane height: respect setAutoresizingMask:CPViewMinXMargin | CPViewMaxXMargin | CPViewMinYMargin | CPViewMaxYMargin
 // fixme: also use dateEnd to calculate time-axis
-// fixme: make ruler position configurable with constants up / down 
+// fixme: make ruler position configurable with constants TLVRulerPositionAbove and TLVRulerPositionBelow
 // todo: support draggable clickhandles in the ruler for cropscaling as in quicktime
 // support ghost mode during dragging (flag: _shoudDrawClipscaled)
 
@@ -30,6 +30,12 @@ TLVGranularityYear = 4;
 var RULER_HEIGHT = 32;
 var TICK_HEIGHT = 5;
 var TIME_RANGE_DEFAULT_HEIGHT = 16;
+
+TLVRulerMarkerLeft = 0;
+TLVRulerMarkerRight = 1;
+
+TLVRulerPositionAbove = 0;
+TLVRulerPositionBelow = 1;
 
 @implementation TLVTimeLane : CPView
 {
@@ -165,6 +171,7 @@ var TIME_RANGE_DEFAULT_HEIGHT = 16;
     CPDate          _clipScaleUpperDate @accessors(property = clipScaleUpperDate);
 
     CPArray         _timeLanes;
+    CGPoint         _selOriginOffset;
 }
 
 - (id)initWithFrame:(CGRect)aFrame
@@ -183,6 +190,8 @@ var TIME_RANGE_DEFAULT_HEIGHT = 16;
         _durationKey = 'duration';
         _clipScaleLowerDate = [CPDate distantPast];
         _clipScaleUpperDate = [CPDate distantFuture];
+
+        _selOriginOffset = CGPointMake(0, 0);
     }
 
     return self;
@@ -283,6 +292,60 @@ var TIME_RANGE_DEFAULT_HEIGHT = 16;
     return TLVGranularityYear;
 }
 
+- (TLVRulerMarkerID)_rulerMarkerUnderPoint:(CGPoint)event
+{
+    return CPNotFound;
+
+    return TLVRulerMarkerLeft;
+
+    return TLVRulerMarkerRight;
+
+}
+- (CGRect)_rulerRectForID:(TLVRulerMarkerID)rulerMarker
+{
+
+	switch (rulerMarker)
+	{
+        case TLVRulerMarkerLeft:
+        case TLVRulerMarkerRight:
+	}
+
+   return CGRectMake(0, 0, 0, 0);
+}
+
+- (void)_moveRulerMarkerWithEvent:(CPEvent)event
+{	var type = [event type];
+
+	if (type == CPLeftMouseUp)
+    {
+        // commit drag
+		return;
+    }
+    else if (type == CPLeftMouseDragged)
+    {
+        
+        [self setNeedsDisplay:YES]
+    }
+	[CPApp setTarget:self selector:@selector(_moveRulerMarkerWithEvent:) forNextEventMatchingMask:CPLeftMouseDraggedMask | CPLeftMouseUpMask untilDate:nil inMode:nil dequeue:YES];
+}
+
+- (void)mouseDown:(CPEvent)event
+{
+	var mouseLocation = [self convertPoint:[event locationInWindow] fromView:nil];
+    var rulerMarker = [self _rulerMarkerUnderPoint:mouseLocation];
+
+	switch (rulerMarker)
+	{
+        case TLVRulerMarkerLeft:
+        case TLVRulerMarkerRight:
+            var markerFrame = [self _rulerRectForID:rulerMarker];
+		    _selOriginOffset.x = markerFrame.origin.x - mouseLocation.x;
+		    _selOriginOffset.y = markerFrame.origin.y - mouseLocation.y;
+		    [self _moveRulerMarkerWithEvent:event];
+        break;
+	}
+}
+
 - (void)drawRect:(CGRect)rect
 {
     if (!_showRuler)
@@ -358,7 +421,7 @@ var TIME_RANGE_DEFAULT_HEIGHT = 16;
 - (void)tile
 {
     var laneCount = [_timeLanes count],
-        currentOrigin = CPPointMake(0, (_showRuler? RULER_HEIGHT : 0)),
+        currentOrigin = CGPointMake(0, (_showRuler? RULER_HEIGHT : 0)),
         laneHeight = (_frame.size.height - (_showRuler? RULER_HEIGHT : 0)) / laneCount;
 
     for (var i = 0; i < laneCount; i++)
