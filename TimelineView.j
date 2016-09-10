@@ -6,9 +6,8 @@
  */
 
 // fixme: lane height: respect setAutoresizingMask:CPViewMinXMargin | CPViewMaxXMargin | CPViewMinYMargin | CPViewMaxYMargin
-// fixme: rooler labels are currently awkward (doubled)
 // fixme: also use dateEnd to calculate time-axis
-// fixme: ruler position up / down (use symbols from CPBox?)
+// fixme: make ruler position configurable with constants up / down 
 // todo: support draggable clickhandles in the ruler for cropscaling as in quicktime
 // support ghost mode during dragging (flag: _shoudDrawClipscaled)
 
@@ -32,7 +31,7 @@ var RULER_HEIGHT = 32;
 var TICK_HEIGHT = 5;
 var TIME_RANGE_DEFAULT_HEIGHT = 16;
 
-@implementation TimeLane : CPView
+@implementation TLVTimeLane : CPView
 {
     CPString     _laneIdentifier @accessors(property = laneIdentifier);
     CPString     _label @accessors(property = label);
@@ -149,7 +148,7 @@ var TIME_RANGE_DEFAULT_HEIGHT = 16;
 @end
 
 
-@implementation TimelineView : CPControl
+@implementation TLVTimelineView : CPControl
 {
     CPString        _timeKey @accessors(property = timeKey);
     CPString        _timeEndKey @accessors(property = timeEndKey);
@@ -379,13 +378,13 @@ var TIME_RANGE_DEFAULT_HEIGHT = 16;
 @end
 
 /*
-@implementation GSMarkupTagAnnotatedImageView:GSMarkupTagView
+@implementation GSMarkupTagTimelineView:GSMarkupTagView
 + (CPString) tagName
 {    return @"timelineView";
 }
 
 + (Class) platformObjectClass
-{    return [TimelineView class];
+{    return [TLVTimelineView class];
 }
 @end
 */

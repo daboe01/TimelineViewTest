@@ -33,7 +33,7 @@
                    ['private','2006-01-04', '18'],
                    ['private','2006-01-05', '19'],
                    ['private','2006-01-06', '20'],
-                   ['private','2007-01-07', '21'],
+                   ['private','2006-01-07', '21'],
 
                    ['work',   '2006-01-01', '50'],
                    ['work',   '2006-01-02', '49'],
@@ -74,18 +74,18 @@
     
     [contentView setBackgroundColor:[CPColor colorWithWhite:0.95 alpha:1.0]];
 
-    _tlView = [[TimelineView alloc] initWithFrame:CGRectMake(0, 0,500,500)];
+    _tlView = [[TLVTimelineView alloc] initWithFrame:CGRectMake(0, 0,500,500)];
     [_tlView setLaneKey:'lane']
 
-    var myLane=[TimeLane new];
+    var myLane=[TLVTimeLane new];
     [myLane addStyleFlags:TLVLanePolygon|TLVLaneCircle];
     [_tlView addLane:myLane withIdentifier:'private'];
 
-    var myLane=[TimeLane new];
+    var myLane=[TLVTimeLane new];
     [myLane addStyleFlags:TLVLanePolygon];
     [_tlView addLane:myLane withIdentifier:'work'];
 
-    var myLane=[TimeLane new];
+    var myLane=[TLVTimeLane new];
     [myLane setLabel:"This is a time range"]
     [myLane addStyleFlags:TLVLaneTimeRange|TLVLaneLaneLabel|TLVLaneValueInline];
     [_tlView addLane:myLane withIdentifier:'other'];
