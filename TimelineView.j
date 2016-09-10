@@ -5,8 +5,8 @@
  * Copyright 2016, Your Company All rights reserved.
  */
 
+// fixme: lane height: respect setAutoresizingMask:CPViewMinXMargin | CPViewMaxXMargin | CPViewMinYMargin | CPViewMaxYMargin
 // fixme: rooler labels are currently awkward (doubled)
-// fixme: prevent overplotting of time-axis labels
 // fixme: also use dateEnd to calculate time-axis
 // fixme: ruler position up / down (use symbols from CPBox?)
 // todo: support draggable clickhandles in the ruler for cropscaling as in quicktime
@@ -26,8 +26,7 @@ TLVLaneLaneLabel = 32;
 TLVGranularityDay = 1;
 TLVGranularityWeek = 2;
 TLVGranularityMonth = 3;
-TLVGranularityMonthYear = 4;
-TLVGranularityYear = 5;
+TLVGranularityYear = 4;
 
 var RULER_HEIGHT = 32;
 var TICK_HEIGHT = 5;
@@ -277,12 +276,10 @@ var TIME_RANGE_DEFAULT_HEIGHT = 16;
 
     if (daysBetween < 2)
        return TLVGranularityDay;
-    if (daysBetween < 16)
+    if (daysBetween < 31 * 2)
        return TLVGranularityWeek;
-    if (daysBetween < 90	)
+    if (daysBetween < 365 * 2)
        return TLVGranularityMonth;
-    if (daysBetween < 366)
-       return TLVGranularityMonthYear;
 
     return TLVGranularityYear;
 }
@@ -317,21 +314,18 @@ var TIME_RANGE_DEFAULT_HEIGHT = 16;
         break;
         case TLVGranularityWeek:
             secondsBetween = (60*60*24);
-            [_axisDateFormatter setDateFormat:@"DD.MM.YY"];
+            [_axisDateFormatter setDateFormat:@"dd.MM.YY"];
         break;
         case TLVGranularityMonth:
             secondsBetween = (60*60*24*7);
             [_axisDateFormatter setDateFormat:@"MM.YY"];
         break;
-        case TLVGranularityMonthYear:
-            secondsBetween = (60*60*24*30.5);
-            [_axisDateFormatter setDateFormat:@"MMM YYYY"];
-        break;
         default:
             [_axisDateFormatter setDateFormat:@"YYYY"];
    }
     numSteps = range.length / secondsBetween;
-    var gapBetween = pixelWidth / numSteps;
+    var gapBetween = pixelWidth / numSteps,
+        lastRightLabelX = 0;
 
     // draw ticks and labels for ruler
     CGContextSetStrokeColor(ctx, _rulerTickColor);
@@ -343,8 +337,10 @@ var TIME_RANGE_DEFAULT_HEIGHT = 16;
         var labelSize = [label sizeWithFont:font];
         var leftPoint=CGPointMake(x - labelSize.width / 2, RULER_HEIGHT- TICK_HEIGHT - labelSize.height);
 
-        if (leftPoint.x < 0 || leftPoint.x + labelSize.width > pixelWidth)
+        if (leftPoint.x < 0 || leftPoint.x + labelSize.width > pixelWidth || leftPoint.x < lastRightLabelX)
             continue;
+
+        lastRightLabelX = leftPoint.x + labelSize.width + 4;
 
         CGContextMoveToPoint(ctx, x, RULER_HEIGHT- TICK_HEIGHT);
         CGContextAddLineToPoint(ctx, x, RULER_HEIGHT );
