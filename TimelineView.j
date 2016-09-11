@@ -7,11 +7,10 @@
 
 // fixme: lane height: respect setAutoresizingMask:CPViewMinXMargin | CPViewMaxXMargin | CPViewMinYMargin | CPViewMaxYMargin
 // fixme: flag for overlaying lanes
-// fixme: also use dateEnd to calculate time-axis
-// fixme: make ruler position configurable with constants TLVRulerPositionAbove and TLVRulerPositionBelow
 // todo: support draggable clickhandles in the ruler for cropscaling as in quicktime
 // support "ghost mode" for clipscale (flag: _shoudDrawClipscaled)
 // draw vertical hairline during dragging
+// fixme: make ruler position configurable with constants TLVRulerPositionAbove and TLVRulerPositionBelow (also flip clipscale amrkers in that case)
 
 @import <Foundation/CPObject.j>
 @import <CoreText/CGContextText.j>
@@ -171,6 +170,7 @@ TLVRulerPositionBelow = 1;
     int             _rulerPosition @accessors(property = rulerPosition);
     CPDate          _clipScaleLowerDate @accessors(property = clipScaleLowerDate);
     CPDate          _clipScaleUpperDate @accessors(property = clipScaleUpperDate);
+    BOOL            _shoudDrawClipscaled @accessors(property = clipScaleUpperDate);
 
     CPArray          _timeLanes;
     CGPoint          _selOriginOffset;
@@ -269,6 +269,14 @@ TLVRulerPositionBelow = 1;
     _clipScaleUpperDate = aDate;
     [self tile]; // <!> fixme
 }
+- (void)shoudDrawClipscaled:(BOOL)shouldDraw
+{
+    _shoudDrawClipscaled = shouldDraw;
+    _range = [self getDateRange];
+    [self setNeedsDisplay:YES]
+
+    [_timeLanes makeObjectsPerformSelector:@selector(setNeedsDisplay:) withObject:YES];
+}
 
 // fixme: clip by _clipScaleLowerDate and _clipScaleUpperDate
 - (CPRange)getDateRange
@@ -276,6 +284,22 @@ TLVRulerPositionBelow = 1;
     var sortedarray = [[self objectValue] sortedArrayUsingDescriptors:[[[CPSortDescriptor alloc] initWithKey:_timeKey ascending:YES]]];
     var min = [[sortedarray firstObject] valueForKeyPath:_timeKey + @".timeIntervalSinceReferenceDate"];
     var max = [[sortedarray lastObject] valueForKeyPath:_timeKey + @".timeIntervalSinceReferenceDate"];
+
+    var sortedarray = [[self objectValue] sortedArrayUsingDescriptors:[[[CPSortDescriptor alloc] initWithKey:_timeEndKey ascending:YES]]];
+    var min2 = [[sortedarray firstObject] valueForKeyPath:_timeEndKey + @".timeIntervalSinceReferenceDate"];
+    var max2 = [[sortedarray lastObject] valueForKeyPath:_timeEndKey + @".timeIntervalSinceReferenceDate"];
+
+    if (min2 !== null)
+        min = MIN(min, min2);
+
+    if (max2 !== null)
+        max = MAX(max, max2);
+
+    if (_shoudDrawClipscaled)
+    {
+        min = MAX(min, [_clipScaleLowerDate timeIntervalSinceReferenceDate]);
+        max = MIN(max, [_clipScaleUpperDate timeIntervalSinceReferenceDate]);
+    }
 
     return CPMakeRange(min, max - min);
 }
@@ -509,7 +533,7 @@ TLVRulerPositionBelow = 1;
 - (void)setObjectValue:(CPArray)someValue
 {
     [super setObjectValue:someValue];
-     _range = [self getDateRange];
+    _range = [self getDateRange];
     [self tile];
 }
 @end

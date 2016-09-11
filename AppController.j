@@ -99,6 +99,19 @@
 
     [contentView addSubview:scrollView];
 
+
+    var mybutton=[[CPButton alloc] initWithFrame:CGRectMake(0, 600, 50, 25)];
+    [mybutton setTitle:"Clipscale"]
+    [mybutton setTarget:self]
+    [mybutton setAction:@selector(doClipscale:)]
+    [contentView addSubview:mybutton]
+
     [theWindow orderFront:self];
 }
+
+- (void) doClipscale:(id)sender
+{
+    [_tlView shoudDrawClipscaled:YES]
+}
+
 @end
