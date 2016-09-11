@@ -6,10 +6,11 @@
  */
 
 // fixme: lane height: respect setAutoresizingMask:CPViewMinXMargin | CPViewMaxXMargin | CPViewMinYMargin | CPViewMaxYMargin
+// fixme: flag for overlaying lanes
 // fixme: also use dateEnd to calculate time-axis
 // fixme: make ruler position configurable with constants TLVRulerPositionAbove and TLVRulerPositionBelow
 // todo: support draggable clickhandles in the ruler for cropscaling as in quicktime
-// support ghost mode during dragging (flag: _shoudDrawClipscaled)
+// support "ghost mode" during dragging (flag: _shoudDrawClipscaled)
 
 @import <Foundation/CPObject.j>
 @import <CoreText/CGContextText.j>
@@ -170,9 +171,10 @@ TLVRulerPositionBelow = 1;
     CPDate          _clipScaleLowerDate @accessors(property = clipScaleLowerDate);
     CPDate          _clipScaleUpperDate @accessors(property = clipScaleUpperDate);
 
-    CPArray         _timeLanes;
-    CGPoint         _selOriginOffset;
-    CPRange         _range;
+    CPArray          _timeLanes;
+    CGPoint          _selOriginOffset;
+    TLVRulerMarkerID _draggingRulerMarker;
+    CPRange          _range;
 }
 
 - (id)initWithFrame:(CGRect)aFrame
@@ -294,14 +296,15 @@ TLVRulerPositionBelow = 1;
     return TLVGranularityYear;
 }
 
-- (TLVRulerMarkerID)_rulerMarkerUnderPoint:(CGPoint)event
+- (TLVRulerMarkerID)_rulerMarkerUnderPoint:(CGPoint)point
 {
+    if (CGRectContainsPoint([self _rulerRectForID:TLVRulerMarkerLeft], point))
+        return TLVRulerMarkerLeft;
+
+    if (CGRectContainsPoint([self _rulerRectForID:TLVRulerMarkerRight], point))
+        return TLVRulerMarkerRight;
+
     return CPNotFound;
-
-    return TLVRulerMarkerLeft;
-
-    return TLVRulerMarkerRight;
-
 }
 - (CGRect)_rulerRectForID:(TLVRulerMarkerID)rulerMarker
 {
@@ -327,14 +330,49 @@ TLVRulerPositionBelow = 1;
 
 	if (type == CPLeftMouseUp)
     {
-        // commit drag
 		return;
     }
     else if (type == CPLeftMouseDragged)
     {
-        
-        [self setNeedsDisplay:YES]
+	    var mouseLocation = [self convertPoint:[event locationInWindow] fromView:nil];
+        var effectiveDate;
+
+	    switch (_draggingRulerMarker)
+	    {
+            case TLVRulerMarkerLeft:
+                effectiveDate = _clipScaleLowerDate;
+            break;
+            case TLVRulerMarkerRight:
+                effectiveDate = _clipScaleUpperDate;
+            break;
+        }
+
+        if (effectiveDate)
+        {
+            var xraw = mouseLocation.x;
+            xraw += _selOriginOffset.x;
+            xraw /= _frame.size.width;
+
+            var x =  xraw * _range.length + _range.location;
+
+            if (x < _range.location)
+                x = _range.location;
+            if (x > CPMaxRange(_range))
+                x = CPMaxRange(_range);
+
+	        switch (_draggingRulerMarker)
+	        {
+                case TLVRulerMarkerLeft:
+                    _clipScaleLowerDate = [CPDate dateWithTimeIntervalSinceReferenceDate:x];
+                break;
+                case TLVRulerMarkerRight:
+                    _clipScaleUpperDate = [CPDate dateWithTimeIntervalSinceReferenceDate:x];
+                break;
+            }
+            [self setNeedsDisplay:YES]
+        }
     }
+
 	[CPApp setTarget:self selector:@selector(_moveRulerMarkerWithEvent:) forNextEventMatchingMask:CPLeftMouseDraggedMask | CPLeftMouseUpMask untilDate:nil inMode:nil dequeue:YES];
 }
 
@@ -349,7 +387,7 @@ TLVRulerPositionBelow = 1;
         case TLVRulerMarkerRight:
             var markerFrame = [self _rulerRectForID:rulerMarker];
 		    _selOriginOffset.x = markerFrame.origin.x - mouseLocation.x;
-		    _selOriginOffset.y = markerFrame.origin.y - mouseLocation.y;
+            _draggingRulerMarker = rulerMarker;
 		    [self _moveRulerMarkerWithEvent:event];
         break;
 	}
