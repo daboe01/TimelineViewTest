@@ -99,8 +99,16 @@
 
     [contentView addSubview:scrollView];
 
+    var myslider=[[CPSlider alloc] initWithFrame:CGRectMake(0, 550, 70, 25)];
+    [myslider setObjectValue:1.0]
+    [myslider setMinValue:0.5]
+    [myslider setMaxValue:1.5]
+    [myslider setTarget:self]
+    [myslider setAction:@selector(doScale:)]
+    [contentView addSubview: myslider]
 
-    var mybutton=[[CPButton alloc] initWithFrame:CGRectMake(0, 600, 50, 25)];
+
+    var mybutton=[[CPButton alloc] initWithFrame:CGRectMake(0, 600, 70, 25)];
     [mybutton setTitle:"Clipscale"]
     [mybutton setTarget:self]
     [mybutton setAction:@selector(doClipscale:)]
@@ -112,6 +120,11 @@
 - (void) doClipscale:(id)sender
 {
     [_tlView shoudDrawClipscaled:YES]
+}
+
+- (void) doScale:(id)sender
+{
+    [_tlView setScale:[sender floatValue]]
 }
 
 @end

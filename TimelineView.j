@@ -10,7 +10,7 @@
 // fixme: lane height: respect setAutoresizingMask:CPViewMinXMargin | CPViewMaxXMargin | CPViewMinYMargin | CPViewMaxYMargin
 // fixme: flag for overlaying lanes
 // draw vertical hairline during dragging
-// fixme: make ruler position configurable with constants TLVRulerPositionAbove and TLVRulerPositionBelow (also flip clipscale amrkers in that case)
+// fixme: test TLVRulerPositionBelow (flip clipscale markers here)
 
 @import <Foundation/CPObject.j>
 @import <CoreText/CGContextText.j>
@@ -174,6 +174,7 @@ TLVRulerPositionBelow = 2;
     CPDate          _clipScaleUpperDate @accessors(property = clipScaleUpperDate);
     BOOL            _shoudDrawClipscaled @accessors(property = clipScaleUpperDate);
     CPUInteger      _rulerPosition @accessors(property = rulerPosition);
+    CPFloat         _scale @accessors(property = scale);
 
     CPRect           _rulerRect;
     CPArray          _timeLanes;
@@ -205,11 +206,12 @@ TLVRulerPositionBelow = 2;
 
     return self;
 }
-- (void)setFrame:(CGRect)aFrame
+- (void)setFrameSize:(CGSize)aSize
 {
-    [super setFrame:aFrame];
+    [super setFrameSize:aSize];
     [self _recalcRulerRect];
     [self setNeedsDisplay:YES];
+    [_timeLanes makeObjectsPerformSelector:@selector(setNeedsDisplay:) withObject:YES];
 }
 - (void)_recalcRulerRect
 {
@@ -231,6 +233,11 @@ TLVRulerPositionBelow = 2;
     _rulerPosition = TLVRulerPositionAbove;
     [self _recalcRulerRect];
     [self setNeedsDisplay:YES];
+}
+- (void)setScale:(CPFloat)aScale
+{
+    _scale = aScale;
+    [self setFrameSize:CGSizeMake(_frame.size.width * _scale, _frame.size.height)];
 }
 
 - (void)addLane:(TimeLane)aTimeLane withIdentifier:(CPString)lane
