@@ -5,6 +5,8 @@
  * Copyright 2016, Your Company All rights reserved.
  */
 
+// implement scaling
+// reserve space for vertical rulers, place headlines there
 // fixme: lane height: respect setAutoresizingMask:CPViewMinXMargin | CPViewMaxXMargin | CPViewMinYMargin | CPViewMaxYMargin
 // fixme: flag for overlaying lanes
 // draw vertical hairline during dragging
@@ -33,8 +35,9 @@ var TIME_RANGE_DEFAULT_HEIGHT = 16;
 TLVRulerMarkerLeft = 0;
 TLVRulerMarkerRight = 1;
 
-TLVRulerPositionAbove = 0;
-TLVRulerPositionBelow = 1;
+TLVRulerPositionNone = 0;
+TLVRulerPositionAbove = 1;
+TLVRulerPositionBelow = 2;
 
 @implementation TLVTimeLane : CPView
 {
@@ -68,6 +71,7 @@ TLVRulerPositionBelow = 1;
     var n =  [myData count];
     var font = [CPFont systemFontOfSize:11];
 
+// <!> fixme: draw this in the ruler
     if(_styleFlags & TLVLaneLaneLabel && _label)
     {
         var labelSize = [_label sizeWithFont:font];
@@ -161,7 +165,6 @@ TLVRulerPositionBelow = 1;
     CPString        _durationKey @accessors(property = durationKey);
     CPString        _laneKey @accessors(property = laneKey);
     CPString        _valueKey @accessors(property = valueKey);
-    BOOL            _showRuler @accessors(property = showRuler);
     CPDateFormatter _axisDateFormatter @accessors(property = axisDateFormatter);
     CPColor         _rulerTickColor @accessors(property = rulerTickColor);
     CPColor         _rulerLabelColor @accessors(property = rulerLabelColor);
@@ -169,7 +172,9 @@ TLVRulerPositionBelow = 1;
     CPDate          _clipScaleLowerDate @accessors(property = clipScaleLowerDate);
     CPDate          _clipScaleUpperDate @accessors(property = clipScaleUpperDate);
     BOOL            _shoudDrawClipscaled @accessors(property = clipScaleUpperDate);
+    CPUInteger      _rulerPosition @accessors(property = rulerPosition);
 
+    CPRect           _rulerRect;
     CPArray          _timeLanes;
     CGPoint          _selOriginOffset;
     TLVRulerMarkerID _draggingRulerMarker;
@@ -180,7 +185,6 @@ TLVRulerPositionBelow = 1;
 {   if  (self = [super initWithFrame:aFrame])
     {
         _timeLanes = @[];
-        _showRuler = YES;
         _axisDateFormatter = [CPDateFormatter new];
         [_axisDateFormatter setDateStyle:CPDateFormatterShortStyle];
         _rulerTickColor = [CPColor grayColor];
@@ -194,10 +198,40 @@ TLVRulerPositionBelow = 1;
         _clipScaleUpperDate = [CPDate distantFuture];
 
         _selOriginOffset = CGPointMake(0, 0);
+
+        [self setRulerPosition:TLVRulerPositionAbove];
     }
 
     return self;
 }
+- (void)setFrame:(CGRect)aFrame
+{
+    [super setFrame:aFrame];
+    [self _recalcRulerRect];
+    [self setNeedsDisplay:YES];
+}
+- (void)_recalcRulerRect
+{
+    switch (_rulerPosition)
+    {
+        case TLVRulerPositionAbove:
+            _rulerRect = CGRectMake(0, 0,_frame.size.width, RULER_HEIGHT);
+        break;
+        case TLVRulerPositionBelow:
+            _rulerRect = CGRectMake(0, _frame.size.height - RULER_HEIGHT, _frame.size.width, RULER_HEIGHT);
+        break;
+        default:
+            _rulerRect = CGRectMake(0, 0, 0, 0);
+    }
+}
+
+- (void)setRulerPosition:(CPUInteger)aPos
+{
+    _rulerPosition = TLVRulerPositionAbove;
+    [self _recalcRulerRect];
+    [self setNeedsDisplay:YES];
+}
+
 
 - (void)addLane:(TimeLane)aTimeLane withIdentifier:(CPString)lane
 {
@@ -223,7 +257,7 @@ TLVRulerPositionBelow = 1;
 
     var outarray = [];
     var length = inarray.length;
-    var pixelWidth = _frame.size.width;
+    var pixelWidth = _rulerRect.size.width;
     var pixelHeight = lane._frame.size.height;
 
     for (var i = 0; i < length; i++)
@@ -340,7 +374,7 @@ TLVRulerPositionBelow = 1;
         break;
 	}
     var xraw = [effectiveDate timeIntervalSinceReferenceDate];
-    var x = ((xraw - _range.location) / _range.length) * _frame.size.width;
+    var x = ((xraw - _range.location) / _range.length) * _rulerRect.size.width;
 
     return CGRectMake(x, 0, 8, RULER_HEIGHT);
 }
@@ -371,7 +405,7 @@ TLVRulerPositionBelow = 1;
         {
             var xraw = mouseLocation.x;
             xraw += _selOriginOffset.x;
-            xraw /= _frame.size.width;
+            xraw /= _rulerRect.size.width;
 
             var x =  xraw * _range.length + _range.location;
 
@@ -421,20 +455,18 @@ TLVRulerPositionBelow = 1;
 
 - (void)drawRect:(CGRect)rect
 {
-    if (!_showRuler)
+    if (_rulerPosition === TLVRulerPositionNone)
         return;
 
-    var drawRect = CGRectMake(0, 0, _frame.size.width, RULER_HEIGHT)
-
-// <!> fixme: intersect drawRect with rect
+// <!> fixme: intersect _rulerRect with rect
     var ctx =  [[CPGraphicsContext currentContext] graphicsPort],
         font = [CPFont systemFontOfSize:11];    
 
     [[CPColor whiteColor] set];
-    CGContextFillRect(ctx, drawRect);
+    CGContextFillRect(ctx, _rulerRect);
     
     var granularity = [self dateGranularity];
-    var pixelWidth = _frame.size.width;
+    var pixelWidth = _rulerRect.size.width;
     var numSteps;
     var secondsBetween;
     var axisDate = [CPDate dateWithTimeIntervalSinceReferenceDate:_range.location];
@@ -468,15 +500,16 @@ TLVRulerPositionBelow = 1;
     {
         var label = [_axisDateFormatter stringFromDate:axisDate];
         var labelSize = [label sizeWithFont:font];
-        var leftPoint=CGPointMake(x - labelSize.width / 2, RULER_HEIGHT- TICK_HEIGHT - labelSize.height);
+        var leftPoint=CGPointMake(x - labelSize.width / 2, CGRectGetMaxY(_rulerRect) - TICK_HEIGHT - labelSize.height);
 
         if (leftPoint.x < 0 || leftPoint.x + labelSize.width > pixelWidth || leftPoint.x < lastRightLabelX)
             continue;
 
         lastRightLabelX = leftPoint.x + labelSize.width + 4;
 
-        CGContextMoveToPoint(ctx, x, RULER_HEIGHT- TICK_HEIGHT);
-        CGContextAddLineToPoint(ctx, x, RULER_HEIGHT );
+// fixme <!> _rulerRect
+        CGContextMoveToPoint(ctx, x, CGRectGetMaxY(_rulerRect) - TICK_HEIGHT);
+        CGContextAddLineToPoint(ctx, x, CGRectGetMaxY(_rulerRect));
         CGContextSaveGState(ctx);
         CGContextSelectFont(ctx, font);
         CGContextSetTextPosition(ctx, leftPoint.x, leftPoint.y);
@@ -493,9 +526,9 @@ TLVRulerPositionBelow = 1;
     {
          var leftRect = [self _rulerRectForID:TLVRulerMarkerLeft];
          var arrowsPath = [CPBezierPath bezierPath];
-         [arrowsPath moveToPoint:CGPointMake(leftRect.origin.x, RULER_HEIGHT - 10)];
-         [arrowsPath lineToPoint:CGPointMake(CGRectGetMaxX(leftRect), RULER_HEIGHT - 10)];
-         [arrowsPath lineToPoint:CGPointMake(leftRect.origin.x, RULER_HEIGHT)];
+         [arrowsPath moveToPoint:CGPointMake(leftRect.origin.x, CGRectGetMaxY(_rulerRect) - 10)];
+         [arrowsPath lineToPoint:CGPointMake(CGRectGetMaxX(leftRect), CGRectGetMaxY(_rulerRect) - 10)];
+         [arrowsPath lineToPoint:CGPointMake(leftRect.origin.x, CGRectGetMaxY(_rulerRect))];
          [arrowsPath closePath];
          CGContextSetFillColor(ctx, [[CPColor blueColor] set]);
          [arrowsPath fill];
@@ -505,9 +538,9 @@ TLVRulerPositionBelow = 1;
     {
          var rightRect = [self _rulerRectForID:TLVRulerMarkerRight];
          var arrowsPath = [CPBezierPath bezierPath];
-         [arrowsPath moveToPoint:CGPointMake(CGRectGetMaxX(rightRect), RULER_HEIGHT - 10)];
-         [arrowsPath lineToPoint:CGPointMake(rightRect.origin.x, RULER_HEIGHT - 10)];
-         [arrowsPath lineToPoint:CGPointMake(CGRectGetMaxX(rightRect), RULER_HEIGHT)];
+         [arrowsPath moveToPoint:CGPointMake(CGRectGetMaxX(rightRect), CGRectGetMaxY(_rulerRect) - 10)];
+         [arrowsPath lineToPoint:CGPointMake(rightRect.origin.x, CGRectGetMaxY(_rulerRect) - 10)];
+         [arrowsPath lineToPoint:CGPointMake(CGRectGetMaxX(rightRect), CGRectGetMaxY(_rulerRect))];
          [arrowsPath closePath];
          CGContextSetFillColor(ctx, [[CPColor blueColor] set]);
          [arrowsPath fill];
@@ -517,8 +550,9 @@ TLVRulerPositionBelow = 1;
 - (void)tile
 {
     var laneCount = [_timeLanes count],
-        currentOrigin = CGPointMake(0, (_showRuler? RULER_HEIGHT : 0)),
-        laneHeight = (_frame.size.height - (_showRuler? RULER_HEIGHT : 0)) / laneCount;
+        currentOrigin = CGPointMake(0, (_rulerPosition == TLVRulerPositionAbove? CGRectGetMaxY(_rulerRect) : 0)),
+        laneHeight = (_frame.size.height - _rulerRect.size.height) / laneCount;
+// <!> fixme use flexible / dynamic sizing
 
     for (var i = 0; i < laneCount; i++)
     {
