@@ -172,6 +172,7 @@ TLVRulerPositionBelow = 1;
 
     CPArray         _timeLanes;
     CGPoint         _selOriginOffset;
+    CPRange         _range;
 }
 
 - (id)initWithFrame:(CGRect)aFrame
@@ -221,21 +222,22 @@ TLVRulerPositionBelow = 1;
 
     var outarray = [];
     var length = inarray.length;
-    var range = [self getDateRange];
     var pixelWidth = _frame.size.width;
     var pixelHeight = lane._frame.size.height;
+
+    _range = [self getDateRange];
 
     for (var i = 0; i < length; i++)
     {
        var xraw = [inarray[i] valueForKeyPath:_timeKey + ".timeIntervalSinceReferenceDate"];
-       var x = ((xraw - range.location) / range.length) * pixelWidth;
+       var x = ((xraw - _range.location) / _range.length) * pixelWidth;
        var yraw = [inarray[i] valueForKey:_valueKey];
        var y = pixelHeight - (((yraw - minY) / (maxY - minY)) * pixelHeight);
        var o = {"x":x, "y":y, "value": [inarray[i] valueForKey:_valueKey]};
        var xraw1 = [inarray[i] valueForKeyPath:_timeEndKey + @".timeIntervalSinceReferenceDate"];
        if (xraw1 !== null)
        {
-           var x1 = ((xraw1 - range.location) / range.length) * pixelWidth;
+           var x1 = ((xraw1 - _range.location) / _range.length) * pixelWidth;
            o.width = x1 - x;
            var baselineY = pixelHeight - TIME_RANGE_DEFAULT_HEIGHT - 5;
            o.y = baselineY;
@@ -303,14 +305,21 @@ TLVRulerPositionBelow = 1;
 }
 - (CGRect)_rulerRectForID:(TLVRulerMarkerID)rulerMarker
 {
+    var effectiveDate;
 
 	switch (rulerMarker)
 	{
         case TLVRulerMarkerLeft:
+            effectiveDate = _clipScaleLowerDate;
+        break;
         case TLVRulerMarkerRight:
+            effectiveDate = _clipScaleUpperDate;
+        break;
 	}
+    var xraw = [effectiveDate timeIntervalSinceReferenceDate];
+    var x = ((xraw - _range.location) / _range.length) * _frame.size.width;
 
-   return CGRectMake(0, 0, 0, 0);
+    return CGRectMake(x, 0, 8, RULER_HEIGHT);
 }
 
 - (void)_moveRulerMarkerWithEvent:(CPEvent)event
@@ -355,9 +364,7 @@ TLVRulerPositionBelow = 1;
 
 // <!> fixme: intersect drawRect with rect
     var ctx =  [[CPGraphicsContext currentContext] graphicsPort],
-        font = [CPFont systemFontOfSize:11],
-        zeroLocation, firstVisibleLocation, lastVisibleLocation;
-    
+        font = [CPFont systemFontOfSize:11];    
 
     [[CPColor whiteColor] set];
     CGContextFillRect(ctx, drawRect);
@@ -416,6 +423,20 @@ TLVRulerPositionBelow = 1;
     }
     CGContextSetLineWidth(ctx, 1);
     CGContextStrokePath(ctx);
+
+    // draw clipscale markers
+    if (_clipScaleLowerDate && _clipScaleLowerDate > [CPDate distantPast])
+    {
+         var leftRect = [self _rulerRectForID:TLVRulerMarkerLeft];
+         [[CPColor blueColor] set];
+         CGContextFillRect(ctx, leftRect);
+    }
+    if (_clipScaleUpperDate && _clipScaleUpperDate < [CPDate distantFuture])
+    {
+         var rightRect = [self _rulerRectForID:TLVRulerMarkerRight];
+         [[CPColor blueColor] set];
+         CGContextFillRect(ctx, rightRect);
+    }
 }
 
 - (void)tile

@@ -75,7 +75,8 @@
     [contentView setBackgroundColor:[CPColor colorWithWhite:0.95 alpha:1.0]];
 
     _tlView = [[TLVTimelineView alloc] initWithFrame:CGRectMake(0, 0,500,500)];
-    [_tlView setLaneKey:'lane']
+    [_tlView setLaneKey:'lane'];
+    [_tlView setClipScaleLowerDate:[[CPDate alloc] initWithShortString:'2006-01-03' ] ];
 
     var myLane=[TLVTimeLane new];
     [myLane addStyleFlags:TLVLanePolygon|TLVLaneCircle];
