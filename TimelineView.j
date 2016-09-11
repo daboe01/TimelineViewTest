@@ -7,7 +7,6 @@
 
 // fixme: lane height: respect setAutoresizingMask:CPViewMinXMargin | CPViewMaxXMargin | CPViewMinYMargin | CPViewMaxYMargin
 // fixme: flag for overlaying lanes
-// support "ghost mode" for clipscale (flag: _shoudDrawClipscaled)
 // draw vertical hairline during dragging
 // fixme: make ruler position configurable with constants TLVRulerPositionAbove and TLVRulerPositionBelow (also flip clipscale amrkers in that case)
 
@@ -444,6 +443,7 @@ TLVRulerPositionBelow = 1;
     {
         case TLVGranularityDay:
             secondsBetween = 60;
+            [_axisDateFormatter setDateFormat:@"hh:mm:ss"];
         break;
         case TLVGranularityWeek:
             secondsBetween = (60*60*24);
