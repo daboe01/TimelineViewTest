@@ -31,6 +31,7 @@ TLVGranularityYear = 4;
 var RULER_HEIGHT = 32;
 var TICK_HEIGHT = 5;
 var TIME_RANGE_DEFAULT_HEIGHT = 16;
+var RULER_WIDTH = 8;
 
 TLVRulerMarkerLeft = 0;
 TLVRulerMarkerRight = 1;
@@ -232,7 +233,6 @@ TLVRulerPositionBelow = 2;
     [self setNeedsDisplay:YES];
 }
 
-
 - (void)addLane:(TimeLane)aTimeLane withIdentifier:(CPString)lane
 {
     _timeLanes.push(aTimeLane);
@@ -376,7 +376,16 @@ TLVRulerPositionBelow = 2;
     var xraw = [effectiveDate timeIntervalSinceReferenceDate];
     var x = ((xraw - _range.location) / _range.length) * _rulerRect.size.width;
 
-    return CGRectMake(x, 0, 8, RULER_HEIGHT);
+    var rect = CGRectMake(x, _rulerRect.origin.y, RULER_WIDTH, _rulerRect.size.height);
+
+	switch (rulerMarker)
+	{
+        case TLVRulerMarkerRight:
+            rect.origin.x -= RULER_WIDTH;
+        break;
+	}
+
+    return rect;
 }
 
 - (void)_moveRulerMarkerWithEvent:(CPEvent)event
