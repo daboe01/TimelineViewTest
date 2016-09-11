@@ -7,7 +7,6 @@
 
 // fixme: lane height: respect setAutoresizingMask:CPViewMinXMargin | CPViewMaxXMargin | CPViewMinYMargin | CPViewMaxYMargin
 // fixme: flag for overlaying lanes
-// todo: support draggable clickhandles in the ruler for cropscaling as in quicktime
 // support "ghost mode" for clipscale (flag: _shoudDrawClipscaled)
 // draw vertical hairline during dragging
 // fixme: make ruler position configurable with constants TLVRulerPositionAbove and TLVRulerPositionBelow (also flip clipscale amrkers in that case)
