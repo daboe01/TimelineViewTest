@@ -5,7 +5,6 @@
  * Copyright 2016, Your Company All rights reserved.
  */
 
-// implement scaling
 // reserve space for vertical rulers, place headlines there
 // fixme: lane height: respect setAutoresizingMask:CPViewMinXMargin | CPViewMaxXMargin | CPViewMinYMargin | CPViewMaxYMargin
 // fixme: flag for overlaying lanes
@@ -31,7 +30,8 @@ TLVGranularityYear = 4;
 var RULER_HEIGHT = 32;
 var TICK_HEIGHT = 5;
 var TIME_RANGE_DEFAULT_HEIGHT = 16;
-var RULER_WIDTH = 8;
+var MARKER_WIDTH = 8;
+var VRULER_WIDTH = 32;
 
 TLVRulerMarkerLeft = 0;
 TLVRulerMarkerRight = 1;
@@ -391,12 +391,12 @@ TLVRulerPositionBelow = 2;
     var xraw = [effectiveDate timeIntervalSinceReferenceDate];
     var x = ((xraw - _range.location) / _range.length) * _rulerRect.size.width;
 
-    var rect = CGRectMake(x, _rulerRect.origin.y, RULER_WIDTH, _rulerRect.size.height);
+    var rect = CGRectMake(x, _rulerRect.origin.y, MARKER_WIDTH, _rulerRect.size.height);
 
 	switch (rulerMarker)
 	{
         case TLVRulerMarkerRight:
-            rect.origin.x -= RULER_WIDTH;
+            rect.origin.x -= MARKER_WIDTH;
         break;
 	}
 
@@ -453,7 +453,8 @@ TLVRulerPositionBelow = 2;
                         _clipScaleUpperDate = _clipScaleLowerDate;
                 break;
             }
-            [self setNeedsDisplay:YES]
+            [self setNeedsDisplay:YES];
+            [self autoscroll:event];
         }
     }
 
@@ -470,7 +471,7 @@ TLVRulerPositionBelow = 2;
         case TLVRulerMarkerLeft:
         case TLVRulerMarkerRight:
             var markerFrame = [self _rulerRectForID:rulerMarker];
-		    _selOriginOffset.x = markerFrame.origin.x - mouseLocation.x;
+		    _selOriginOffset.x = markerFrame.origin.x - mouseLocation.x + (rulerMarker == TLVRulerMarkerRight? MARKER_WIDTH : 0);
             _draggingRulerMarker = rulerMarker;
 		    [self _moveRulerMarkerWithEvent:event];
         break;
