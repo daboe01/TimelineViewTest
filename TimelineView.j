@@ -362,9 +362,15 @@ TLVRulerPositionBelow = 1;
 	        {
                 case TLVRulerMarkerLeft:
                     _clipScaleLowerDate = [CPDate dateWithTimeIntervalSinceReferenceDate:x];
+
+                    if (_clipScaleLowerDate > _clipScaleUpperDate)
+                        _clipScaleLowerDate = _clipScaleUpperDate
                 break;
                 case TLVRulerMarkerRight:
                     _clipScaleUpperDate = [CPDate dateWithTimeIntervalSinceReferenceDate:x];
+
+                    if (_clipScaleUpperDate < _clipScaleLowerDate)
+                        _clipScaleUpperDate = _clipScaleLowerDate;
                 break;
             }
             [self setNeedsDisplay:YES]
@@ -463,14 +469,25 @@ TLVRulerPositionBelow = 1;
     if (_clipScaleLowerDate && _clipScaleLowerDate > [CPDate distantPast])
     {
          var leftRect = [self _rulerRectForID:TLVRulerMarkerLeft];
-         [[CPColor blueColor] set];
-         CGContextFillRect(ctx, leftRect);
+         var arrowsPath = [CPBezierPath bezierPath];
+         [arrowsPath moveToPoint:CGPointMake(leftRect.origin.x, RULER_HEIGHT - 10)];
+         [arrowsPath lineToPoint:CGPointMake(CGRectGetMaxX(leftRect), RULER_HEIGHT - 10)];
+         [arrowsPath lineToPoint:CGPointMake(leftRect.origin.x, RULER_HEIGHT)];
+         [arrowsPath closePath];
+         CGContextSetFillColor(ctx, [[CPColor blueColor] set]);
+         [arrowsPath fill];
+
     }
     if (_clipScaleUpperDate && _clipScaleUpperDate < [CPDate distantFuture])
     {
          var rightRect = [self _rulerRectForID:TLVRulerMarkerRight];
-         [[CPColor blueColor] set];
-         CGContextFillRect(ctx, rightRect);
+         var arrowsPath = [CPBezierPath bezierPath];
+         [arrowsPath moveToPoint:CGPointMake(CGRectGetMaxX(rightRect), RULER_HEIGHT - 10)];
+         [arrowsPath lineToPoint:CGPointMake(rightRect.origin.x, RULER_HEIGHT - 10)];
+         [arrowsPath lineToPoint:CGPointMake(CGRectGetMaxX(rightRect), RULER_HEIGHT)];
+         [arrowsPath closePath];
+         CGContextSetFillColor(ctx, [[CPColor blueColor] set]);
+         [arrowsPath fill];
     }
 }
 
