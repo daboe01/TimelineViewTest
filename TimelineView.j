@@ -10,7 +10,8 @@
 // fixme: also use dateEnd to calculate time-axis
 // fixme: make ruler position configurable with constants TLVRulerPositionAbove and TLVRulerPositionBelow
 // todo: support draggable clickhandles in the ruler for cropscaling as in quicktime
-// support "ghost mode" during dragging (flag: _shoudDrawClipscaled)
+// support "ghost mode" for clipscale (flag: _shoudDrawClipscaled)
+// draw vertical hairline during dragging
 
 @import <Foundation/CPObject.j>
 @import <CoreText/CGContextText.j>
@@ -227,8 +228,6 @@ TLVRulerPositionBelow = 1;
     var pixelWidth = _frame.size.width;
     var pixelHeight = lane._frame.size.height;
 
-    _range = [self getDateRange];
-
     for (var i = 0; i < length; i++)
     {
        var xraw = [inarray[i] valueForKeyPath:_timeKey + ".timeIntervalSinceReferenceDate"];
@@ -283,8 +282,7 @@ TLVRulerPositionBelow = 1;
 
 - (CPUInteger)dateGranularity
 {
-    var range = [self getDateRange]
-    var daysBetween= (range.length / (60*60*24) ) + 1;
+    var daysBetween= (_range.length / (60*60*24) ) + 1;
 
     if (daysBetween < 2)
        return TLVGranularityDay;
@@ -407,12 +405,11 @@ TLVRulerPositionBelow = 1;
     [[CPColor whiteColor] set];
     CGContextFillRect(ctx, drawRect);
     
-    var range = [self getDateRange];
     var granularity = [self dateGranularity];
     var pixelWidth = _frame.size.width;
     var numSteps;
     var secondsBetween;
-    var axisDate = [CPDate dateWithTimeIntervalSinceReferenceDate:range.location];
+    var axisDate = [CPDate dateWithTimeIntervalSinceReferenceDate:_range.location];
 
     switch (granularity)
     {
@@ -430,7 +427,7 @@ TLVRulerPositionBelow = 1;
         default:
             [_axisDateFormatter setDateFormat:@"YYYY"];
    }
-    numSteps = range.length / secondsBetween;
+    numSteps = _range.length / secondsBetween;
     var gapBetween = pixelWidth / numSteps,
         lastRightLabelX = 0;
 
@@ -495,6 +492,7 @@ TLVRulerPositionBelow = 1;
 - (void)setObjectValue:(CPArray)someValue
 {
     [super setObjectValue:someValue];
+     _range = [self getDateRange];
     [self tile];
 }
 @end
