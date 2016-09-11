@@ -211,7 +211,15 @@ TLVRulerPositionBelow = 2;
     [super setFrameSize:aSize];
     [self _recalcRulerRect];
     [self setNeedsDisplay:YES];
-    [_timeLanes makeObjectsPerformSelector:@selector(setNeedsDisplay:) withObject:YES];
+
+    var laneCount = [_timeLanes count];
+
+    for (var i = 0; i < laneCount; i++)
+    {
+        var currentLane = [_timeLanes objectAtIndex:i];
+        [currentLane setFrameSize:CPMakeSize(aSize.width, currentLane._frame.size.height)];
+        [currentLane setNeedsDisplay:YES];
+    }
 }
 - (void)_recalcRulerRect
 {
