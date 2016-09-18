@@ -47,6 +47,8 @@ TLVRulerPositionBelow = 2;
     TimelineView _timelineView @accessors(property = timelineView);
     CPUInteger   _styleFlags @accessors(property=styleFlags);
     CPColor      _laneColor;
+
+    CPRange      _valueRange;
 }
 
 + (CPArray) laneColorCodes
@@ -64,13 +66,36 @@ TLVRulerPositionBelow = 2;
     _styleFlags &= ~flagsToRemove
 }
 
-- (void)drawRect:(CGRect)rect
+- (void)_drawVerticalRuler
 {
-    var context = [[CPGraphicsContext currentContext] graphicsPort];
-    var myData = [_timelineView dataForLane:self];
-    var n =  [myData count];
-    var font = [CPFont systemFontOfSize:11];
 
+    var context = [[CPGraphicsContext currentContext] graphicsPort];
+    var pixelHeight = _frame.size.height;
+    var font = [CPFont systemFontOfSize:11];
+    var gapBetween;
+
+    CGContextSetStrokeColor(context, _timelineView._rulerTickColor);
+    CGContextBeginPath(context);
+
+    for (var y = 0; y < pixelHeight; y += gapBetween)
+    {
+        var label = [CPString stringWithFormat:"%d", y];
+        var labelSize = [label sizeWithFont:font];
+        var leftPoint = CGPointMake(0, y - labelSize.height / 2);
+/*
+        CGContextMoveToPoint(context, x, CGRectGetMaxY(_rulerRect) - TICK_HEIGHT);
+        CGContextAddLineToPoint(context, x, CGRectGetMaxY(_rulerRect));
+        CGContextSaveGState(context);
+        CGContextSelectFont(context, font);
+        CGContextSetTextPosition(context, leftPoint.x, leftPoint.y);
+        CGContextSetFillColor(context, _timelineView._rulerLabelColor);
+        CGContextSetStrokeColor(context, _timelineView._rulerLabelColor);
+        CGContextShowText(context, label);
+        CGContextRestoreGState(context);
+*/
+    }
+
+/*
 // <!> fixme: draw this in the ruler
     if(_styleFlags & TLVLaneLaneLabel && _label)
     {
@@ -83,6 +108,16 @@ TLVRulerPositionBelow = 2;
         CGContextSetStrokeColor(context, _laneColor);
         CGContextShowText(context, _label);
     }
+*/
+
+}
+
+- (void)drawRect:(CGRect)rect
+{
+    var context = [[CPGraphicsContext currentContext] graphicsPort];
+    var myData = [_timelineView dataForLane:self];
+    var n =  [myData count];
+    var font = [CPFont systemFontOfSize:11];
 
     if(_styleFlags & TLVLanePolygon)
     {
@@ -129,7 +164,7 @@ TLVRulerPositionBelow = 2;
             if (_styleFlags & TLVLaneValueInline && o.value)
             {
                 var labelSize = [o.value sizeWithFont:font];
-                var leftPoint=CGPointMake(o.x + o.width / 2 - labelSize.width / 2, o. y + TIME_RANGE_DEFAULT_HEIGHT / 2 + 1);
+                var leftPoint = CGPointMake(o.x + o.width / 2 - labelSize.width / 2);
 
                 CGContextSaveGState(context);
                 CGContextSelectFont(context, font);
@@ -141,6 +176,9 @@ TLVRulerPositionBelow = 2;
             }
         }
     }
+
+    if (_hasVerticalRuler)
+        [self _drawVerticalRuler]
 }
 
 
@@ -241,15 +279,7 @@ TLVRulerPositionBelow = 2;
     [super setFrameSize:aSize];
     [self _recalcRulerRect];
     [self setNeedsDisplay:YES];
-
-    var laneCount = [_timeLanes count];
-
-    for (var i = 0; i < laneCount; i++)
-    {
-        var currentLane = [_timeLanes objectAtIndex:i];
-        [currentLane setFrameSize:CPMakeSize(aSize.width, currentLane._frame.size.height)];
-        [currentLane setNeedsDisplay:YES];
-    }
+    [self tile]
 }
 - (void)_recalcRulerRect
 {
@@ -301,13 +331,22 @@ TLVRulerPositionBelow = 2;
 
 // fixme: clip by getDateRange
     var sortedarray = [inarray sortedArrayUsingDescriptors:[[[CPSortDescriptor alloc] initWithKey:_valueKey ascending:YES]]];
-    var minY = [[sortedarray firstObject] valueForKey:_valueKey];
-    var maxY = [[sortedarray lastObject] valueForKey:_valueKey];
+
 
     var outarray = [];
     var length = inarray.length;
-    var pixelWidth = _rulerRect.size.width;
+    var pixelWidth = _rulerRect.size.width - (_hideVerticalRulers? 0:VRULER_WIDTH);
     var pixelHeight = lane._frame.size.height;
+
+    var maxY = -9007199254740990,
+        minY =  9007199254740990;
+
+    for (var i = 0; i < length; i++)
+    {   var val = [inarray[i] valueForKey:_valueKey];
+        minY = MIN(minY, val);
+        maxY = MAX(maxY, val);
+    }
+    lane._valueRange = CPMakeRange(minY, maxY - minY)
 
     for (var i = 0; i < length; i++)
     {
@@ -367,7 +406,7 @@ TLVRulerPositionBelow = 2;
 - (CPRange)getDateRange
 {
     if (![[self objectValue] respondsToSelector:@selector(sortedArrayUsingDescriptors:)])
-        return;
+        return nil;
 
     var sortedarray = [[self objectValue] sortedArrayUsingDescriptors:[[[CPSortDescriptor alloc] initWithKey:_timeKey ascending:YES]]];
     var min = [[[sortedarray firstObject] dateValueForKeyPath:_timeKey] timeIntervalSinceReferenceDate];
@@ -405,7 +444,7 @@ TLVRulerPositionBelow = 2;
 
     if (daysBetween < 2)
        return TLVGranularityDay;
-    if (daysBetween < 31 * 2)
+    if (daysBetween < 31 * 6)
        return TLVGranularityWeek;
     if (daysBetween < 365 * 2)
        return TLVGranularityMonth;
@@ -543,8 +582,7 @@ TLVRulerPositionBelow = 2;
     if (granularity === null)
         return;
 
-    var pixelWidth = _rulerRect.size.width;
-    var numSteps;
+    var pixelWidth = _rulerRect.size.width - (_hideVerticalRulers? 0:VRULER_WIDTH);
     var secondsBetween;
     var axisDate = [CPDate dateWithTimeIntervalSinceReferenceDate:_range.location];
 
@@ -564,8 +602,8 @@ TLVRulerPositionBelow = 2;
         break;
         default:
             [_axisDateFormatter setDateFormat:@"YYYY"];
-   }
-    numSteps = _range.length / secondsBetween;
+    }
+    var numSteps = _range.length / secondsBetween;
     var gapBetween = pixelWidth / numSteps,
         lastRightLabelX = 0;
 
@@ -573,18 +611,17 @@ TLVRulerPositionBelow = 2;
     CGContextSetStrokeColor(ctx, _rulerTickColor);
     CGContextBeginPath(ctx);
 
-    for (var x = 0; x < pixelWidth; x += gapBetween, axisDate = [axisDate dateByAddingTimeInterval:secondsBetween])
+    for (var x = _hideVerticalRulers? 0:VRULER_WIDTH; x < pixelWidth; x += gapBetween, axisDate = [axisDate dateByAddingTimeInterval:secondsBetween])
     {
         var label = [_axisDateFormatter stringFromDate:axisDate];
         var labelSize = [label sizeWithFont:font];
-        var leftPoint=CGPointMake(x - labelSize.width / 2, CGRectGetMaxY(_rulerRect) - TICK_HEIGHT - labelSize.height);
+        var leftPoint = CGPointMake(x - labelSize.width / 2, CGRectGetMaxY(_rulerRect) - TICK_HEIGHT - labelSize.height);
 
-        if (leftPoint.x < 0 || leftPoint.x + labelSize.width > pixelWidth || leftPoint.x < lastRightLabelX)
+        if (leftPoint.x < _rulerRect.origin.x || leftPoint.x + labelSize.width > pixelWidth || leftPoint.x < lastRightLabelX)
             continue;
 
         lastRightLabelX = leftPoint.x + labelSize.width + 4;
 
-// fixme <!> _rulerRect
         CGContextMoveToPoint(ctx, x, CGRectGetMaxY(_rulerRect) - TICK_HEIGHT);
         CGContextAddLineToPoint(ctx, x, CGRectGetMaxY(_rulerRect));
         CGContextSaveGState(ctx);
@@ -630,8 +667,8 @@ TLVRulerPositionBelow = 2;
         return; 
 
    var laneCount = [_timeLanes count],
-        currentOrigin = CGPointMake(0, (_rulerPosition == TLVRulerPositionAbove? CGRectGetMaxY(_rulerRect) : 0)),
-        laneHeight = (_frame.size.height - _rulerRect.size.height) / laneCount;
+       currentOrigin = CGPointMake(0, (_rulerPosition == TLVRulerPositionAbove? CGRectGetMaxY(_rulerRect) : 0)),
+       laneHeight = (_frame.size.height - _rulerRect.size.height) / laneCount;
 // <!> fixme use flexible / dynamic sizing
 
     for (var i = 0; i < laneCount; i++)
