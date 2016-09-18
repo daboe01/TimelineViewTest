@@ -12,7 +12,6 @@
 // fixme: test TLVRulerPositionBelow (flip clipscale markers here)
 
 @import <Foundation/CPObject.j>
-@import <CoreText/CGContextText.j>
 
 TLVLaneStylePlain = 0;
 TLVLaneValueInline = 1;
@@ -157,6 +156,34 @@ TLVRulerPositionBelow = 2;
 
 @end
 
+@implementation CPDate(shortDescription)
+- (CPString)shortDescription
+{
+    return [CPString stringWithFormat:@"%04d-%02d-%02d", self.getFullYear(), self.getMonth() + 1, self.getDate()];
+}
+- (id)initWithShortString:(CPString)description
+{
+    var format = /(\d{4})-(\d{2})-(\d{2})/,
+        d = description.match(new RegExp(format));
+    return new Date(d[1], d[2] - 1, d[3]);
+}
+@end
+
+@implementation CPObject(_DateCasting)
+
+- (CPDate)dateValueForKeyPath:(CPString)aKey
+{
+    var val = [self valueForKeyPath:aKey];
+
+    if (![val isKindOfClass:[CPDate class]])
+    {
+        return [[CPDate alloc] initWithShortString:val];
+    }
+
+    return val;
+}
+
+@end
 
 @implementation TLVTimelineView : CPControl
 {
@@ -166,6 +193,7 @@ TLVRulerPositionBelow = 2;
     CPString        _durationKey @accessors(property = durationKey);
     CPString        _laneKey @accessors(property = laneKey);
     CPString        _valueKey @accessors(property = valueKey);
+
     CPDateFormatter _axisDateFormatter @accessors(property = axisDateFormatter);
     CPColor         _rulerTickColor @accessors(property = rulerTickColor);
     CPColor         _rulerLabelColor @accessors(property = rulerLabelColor);
@@ -175,6 +203,8 @@ TLVRulerPositionBelow = 2;
     BOOL            _shoudDrawClipscaled @accessors(property = clipScaleUpperDate);
     CPUInteger      _rulerPosition @accessors(property = rulerPosition);
     CPFloat         _scale @accessors(property = scale);
+    BOOL            _hideVerticalRulers @accessors(property = hideVerticalRulers);
+
 
     CPRect           _rulerRect;
     CPArray          _timeLanes;
@@ -192,7 +222,7 @@ TLVRulerPositionBelow = 2;
         _rulerTickColor = [CPColor grayColor];
         _rulerLabelColor = [CPColor grayColor];
         _timeKey = 'date';
-        _timeEndKey = 'date2';
+        _timeEndKey = nil;
         _valueKey = 'value';
         _laneKey = 'lane';
         _durationKey = 'duration';
@@ -226,10 +256,10 @@ TLVRulerPositionBelow = 2;
     switch (_rulerPosition)
     {
         case TLVRulerPositionAbove:
-            _rulerRect = CGRectMake(0, 0,_frame.size.width, RULER_HEIGHT);
+            _rulerRect = CGRectMake(_hideVerticalRulers? 0:VRULER_WIDTH, 0, _frame.size.width, RULER_HEIGHT);
         break;
         case TLVRulerPositionBelow:
-            _rulerRect = CGRectMake(0, _frame.size.height - RULER_HEIGHT, _frame.size.width, RULER_HEIGHT);
+            _rulerRect = CGRectMake(_hideVerticalRulers? 0:VRULER_WIDTH, _frame.size.height - RULER_HEIGHT, _frame.size.width, RULER_HEIGHT);
         break;
         default:
             _rulerRect = CGRectMake(0, 0, 0, 0);
@@ -264,7 +294,11 @@ TLVRulerPositionBelow = 2;
 // <!> fixme: move y scaling to the lane (the lanes is also responsible for drawing any y-axis rulers)
 - (CPArray)dataForLane:(TimeLane)lane
 {
-    var inarray = [[self objectValue] filteredArrayUsingPredicate:[CPPredicate predicateWithFormat: _laneKey+" = %@", [lane laneIdentifier]]];
+    var inarray = _laneKey? [[self objectValue] filteredArrayUsingPredicate:[CPPredicate predicateWithFormat: _laneKey+" = %@", [lane laneIdentifier]]] : [self objectValue];
+
+    if (![inarray respondsToSelector:@selector(sortedArrayUsingDescriptors:)])
+        return;
+
 // fixme: clip by getDateRange
     var sortedarray = [inarray sortedArrayUsingDescriptors:[[[CPSortDescriptor alloc] initWithKey:_valueKey ascending:YES]]];
     var minY = [[sortedarray firstObject] valueForKey:_valueKey];
@@ -277,28 +311,32 @@ TLVRulerPositionBelow = 2;
 
     for (var i = 0; i < length; i++)
     {
-       var xraw = [inarray[i] valueForKeyPath:_timeKey + ".timeIntervalSinceReferenceDate"];
-       var x = ((xraw - _range.location) / _range.length) * pixelWidth;
+       var xraw = [[inarray[i] dateValueForKeyPath:_timeKey] timeIntervalSinceReferenceDate];
+       var x = ((xraw - _range.location) / _range.length) * pixelWidth + (_hideVerticalRulers? 0:VRULER_WIDTH);
        var yraw = [inarray[i] valueForKey:_valueKey];
        var y = pixelHeight - (((yraw - minY) / (maxY - minY)) * pixelHeight);
        var o = {"x":x, "y":y, "value": [inarray[i] valueForKey:_valueKey]};
-       var xraw1 = [inarray[i] valueForKeyPath:_timeEndKey + @".timeIntervalSinceReferenceDate"];
-       if (xraw1 !== null)
+
+       if (_timeEndKey)
        {
-           var x1 = ((xraw1 - _range.location) / _range.length) * pixelWidth;
-           o.width = x1 - x;
-           var baselineY = pixelHeight - TIME_RANGE_DEFAULT_HEIGHT - 5;
-           o.y = baselineY;
-
-           // stack overlapping rectangles
-           var length_o = outarray.length;
-           for (var j = 0; j < length_o; j++)
+           var xraw1 = [[inarray[i] dateValueForKeyPath:_timeEndKey]  timeIntervalSinceReferenceDate];
+           if (xraw1 !== null)
            {
-               var existingRect = CGRectMake(outarray[j].x, outarray[j].y - TIME_RANGE_DEFAULT_HEIGHT, outarray[j].width, TIME_RANGE_DEFAULT_HEIGHT);
-               var newRect = CGRectMake(o.x, o.y - TIME_RANGE_DEFAULT_HEIGHT, o.width, TIME_RANGE_DEFAULT_HEIGHT);
+               var x1 = ((xraw1 - _range.location) / _range.length) * pixelWidth + (_hideVerticalRulers? 0:VRULER_WIDTH);
+               o.width = x1 - x;
+               var baselineY = pixelHeight - TIME_RANGE_DEFAULT_HEIGHT - 5;
+               o.y = baselineY;
 
-               if (CGRectIntersectsRect(newRect, existingRect) )
-                   o.y -= TIME_RANGE_DEFAULT_HEIGHT - 2;
+               // stack overlapping rectangles
+               var length_o = outarray.length;
+               for (var j = 0; j < length_o; j++)
+               {
+                   var existingRect = CGRectMake(outarray[j].x, outarray[j].y - TIME_RANGE_DEFAULT_HEIGHT, outarray[j].width, TIME_RANGE_DEFAULT_HEIGHT);
+                   var newRect = CGRectMake(o.x, o.y - TIME_RANGE_DEFAULT_HEIGHT, o.width, TIME_RANGE_DEFAULT_HEIGHT);
+
+                   if (CGRectIntersectsRect(newRect, existingRect) )
+                       o.y -= TIME_RANGE_DEFAULT_HEIGHT - 2;
+               }
            }
        }
        outarray.push(o);
@@ -328,19 +366,25 @@ TLVRulerPositionBelow = 2;
 // fixme: clip by _clipScaleLowerDate and _clipScaleUpperDate
 - (CPRange)getDateRange
 {
+    if (![[self objectValue] respondsToSelector:@selector(sortedArrayUsingDescriptors:)])
+        return;
+
     var sortedarray = [[self objectValue] sortedArrayUsingDescriptors:[[[CPSortDescriptor alloc] initWithKey:_timeKey ascending:YES]]];
-    var min = [[sortedarray firstObject] valueForKeyPath:_timeKey + @".timeIntervalSinceReferenceDate"];
-    var max = [[sortedarray lastObject] valueForKeyPath:_timeKey + @".timeIntervalSinceReferenceDate"];
+    var min = [[[sortedarray firstObject] dateValueForKeyPath:_timeKey] timeIntervalSinceReferenceDate];
+    var max = [[[sortedarray lastObject] dateValueForKeyPath:_timeKey]  timeIntervalSinceReferenceDate];
 
-    var sortedarray = [[self objectValue] sortedArrayUsingDescriptors:[[[CPSortDescriptor alloc] initWithKey:_timeEndKey ascending:YES]]];
-    var min2 = [[sortedarray firstObject] valueForKeyPath:_timeEndKey + @".timeIntervalSinceReferenceDate"];
-    var max2 = [[sortedarray lastObject] valueForKeyPath:_timeEndKey + @".timeIntervalSinceReferenceDate"];
+    if (_timeEndKey)
+    {
+        var sortedarray = [[self objectValue] sortedArrayUsingDescriptors:[[[CPSortDescriptor alloc] initWithKey:_timeEndKey ascending:YES]]];
+        var min2 = [[[sortedarray firstObject] dateValueForKeyPath:_timeEndKey] timeIntervalSinceReferenceDate];
+        var max2 = [[[sortedarray lastObject] dateValueForKeyPath:_timeEndKey] timeIntervalSinceReferenceDate];
 
-    if (min2 !== null)
-        min = MIN(min, min2);
+        if (min2 !== null)
+            min = MIN(min, min2);
 
-    if (max2 !== null)
-        max = MAX(max, max2);
+        if (max2 !== null)
+            max = MAX(max, max2);
+    }
 
     if (_shoudDrawClipscaled)
     {
@@ -353,6 +397,10 @@ TLVRulerPositionBelow = 2;
 
 - (CPUInteger)dateGranularity
 {
+
+    if (!_range)
+        return null;
+
     var daysBetween= (_range.length / (60*60*24) ) + 1;
 
     if (daysBetween < 2)
@@ -391,7 +439,7 @@ TLVRulerPositionBelow = 2;
     var xraw = [effectiveDate timeIntervalSinceReferenceDate];
     var x = ((xraw - _range.location) / _range.length) * _rulerRect.size.width;
 
-    var rect = CGRectMake(x, _rulerRect.origin.y, MARKER_WIDTH, _rulerRect.size.height);
+    var rect = CGRectMake(x + (_hideVerticalRulers? 0:VRULER_WIDTH), _rulerRect.origin.y, MARKER_WIDTH, _rulerRect.size.height);
 
 	switch (rulerMarker)
 	{
@@ -427,7 +475,7 @@ TLVRulerPositionBelow = 2;
 
         if (effectiveDate)
         {
-            var xraw = mouseLocation.x;
+            var xraw = mouseLocation.x - (_hideVerticalRulers? 0:VRULER_WIDTH);
             xraw += _selOriginOffset.x;
             xraw /= _rulerRect.size.width;
 
@@ -491,6 +539,10 @@ TLVRulerPositionBelow = 2;
     CGContextFillRect(ctx, _rulerRect);
     
     var granularity = [self dateGranularity];
+
+    if (granularity === null)
+        return;
+
     var pixelWidth = _rulerRect.size.width;
     var numSteps;
     var secondsBetween;
@@ -574,7 +626,10 @@ TLVRulerPositionBelow = 2;
 
 - (void)tile
 {
-    var laneCount = [_timeLanes count],
+    if (!_rulerRect)
+        return; 
+
+   var laneCount = [_timeLanes count],
         currentOrigin = CGPointMake(0, (_rulerPosition == TLVRulerPositionAbove? CGRectGetMaxY(_rulerRect) : 0)),
         laneHeight = (_frame.size.height - _rulerRect.size.height) / laneCount;
 // <!> fixme use flexible / dynamic sizing
