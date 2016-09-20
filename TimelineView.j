@@ -5,7 +5,7 @@
  * Copyright 2016, Your Company All rights reserved.
  */
 
-// reserve space for vertical rulers, place headlines there
+// add clipscalemarkers with the mouse (left / right of midline)
 // fixme: lane height: respect setAutoresizingMask:CPViewMinXMargin | CPViewMaxXMargin | CPViewMinYMargin | CPViewMaxYMargin
 // fixme: flag for overlaying lanes
 // draw vertical hairline during dragging
@@ -28,9 +28,12 @@ TLVGranularityYear = 4;
 
 var RULER_HEIGHT = 32;
 var TICK_HEIGHT = 5;
+var TICK_WIDTH = 4;
 var TIME_RANGE_DEFAULT_HEIGHT = 16;
 var MARKER_WIDTH = 8;
-var VRULER_WIDTH = 32;
+var VRULER_WIDTH = 50;
+
+var HUGE_NUMBER = 9007199254740990
 
 TLVRulerMarkerLeft = 0;
 TLVRulerMarkerRight = 1;
@@ -48,6 +51,7 @@ TLVRulerPositionBelow = 2;
     CPUInteger   _styleFlags @accessors(property=styleFlags);
     CPColor      _laneColor;
 
+    // private housekeeping stuff
     CPRange      _valueRange;
 }
 
@@ -68,23 +72,34 @@ TLVRulerPositionBelow = 2;
 
 - (void)_drawVerticalRuler
 {
+    if (!_valueRange)
+        return;
 
     var context = [[CPGraphicsContext currentContext] graphicsPort];
     var pixelHeight = _frame.size.height;
     var font = [CPFont systemFontOfSize:11];
-    var gapBetween;
+    var gapBetween = _frame.size.height / 10;
+    var gapBetweenLabel = _valueRange.length / 10;
+    var yLabel = CPMaxRange(_valueRange);
+
+    [[CPColor whiteColor] set];
+    CGContextFillRect(context, CGRectMake( 0, 0, VRULER_WIDTH, _frame.size.height));
 
     CGContextSetStrokeColor(context, _timelineView._rulerTickColor);
-    CGContextBeginPath(context);
 
-    for (var y = 0; y < pixelHeight; y += gapBetween)
+    CGContextBeginPath(context);
+    CGContextMoveToPoint(context, VRULER_WIDTH, 0);
+    CGContextAddLineToPoint(context, VRULER_WIDTH, _frame.size.height);
+
+// Math.ceil(x / 5) * 5
+    for (var y = 0; y < pixelHeight; y += gapBetween, yLabel -= gapBetweenLabel)
     {
-        var label = [CPString stringWithFormat:"%d", y];
+        var label = [CPString stringWithFormat:"%3.2f", yLabel];
         var labelSize = [label sizeWithFont:font];
-        var leftPoint = CGPointMake(0, y - labelSize.height / 2);
-/*
-        CGContextMoveToPoint(context, x, CGRectGetMaxY(_rulerRect) - TICK_HEIGHT);
-        CGContextAddLineToPoint(context, x, CGRectGetMaxY(_rulerRect));
+        var leftPoint = CGPointMake(VRULER_WIDTH - labelSize.width - TICK_WIDTH, y - labelSize.height / 2);
+
+        CGContextMoveToPoint(context, VRULER_WIDTH - TICK_WIDTH, leftPoint.y);
+        CGContextAddLineToPoint(context, VRULER_WIDTH, leftPoint.y);
         CGContextSaveGState(context);
         CGContextSelectFont(context, font);
         CGContextSetTextPosition(context, leftPoint.x, leftPoint.y);
@@ -92,8 +107,9 @@ TLVRulerPositionBelow = 2;
         CGContextSetStrokeColor(context, _timelineView._rulerLabelColor);
         CGContextShowText(context, label);
         CGContextRestoreGState(context);
-*/
     }
+    CGContextSetLineWidth(context, 1);
+    CGContextStrokePath(context);
 
 /*
 // <!> fixme: draw this in the ruler
@@ -240,10 +256,9 @@ TLVRulerPositionBelow = 2;
     CPDate          _clipScaleUpperDate @accessors(property = clipScaleUpperDate);
     BOOL            _shoudDrawClipscaled @accessors(property = clipScaleUpperDate);
     CPUInteger      _rulerPosition @accessors(property = rulerPosition);
-    CPFloat         _scale @accessors(property = scale);
     BOOL            _hideVerticalRulers @accessors(property = hideVerticalRulers);
 
-
+    // private housekeeping stuff
     CPRect           _rulerRect;
     CPArray          _timeLanes;
     CGPoint          _selOriginOffset;
@@ -302,11 +317,6 @@ TLVRulerPositionBelow = 2;
     [self _recalcRulerRect];
     [self setNeedsDisplay:YES];
 }
-- (void)setScale:(CPFloat)aScale
-{
-    _scale = aScale;
-    [self setFrameSize:CGSizeMake(_frame.size.width * _scale, _frame.size.height)];
-}
 
 - (void)addLane:(TimeLane)aTimeLane withIdentifier:(CPString)lane
 {
@@ -320,7 +330,6 @@ TLVRulerPositionBelow = 2;
 }
 
 // this method returns an array with dictionaries that contain (among others) x and y properties (already appropriately scaled and in the lane coordinate system)
-// <!> fixme: support scaling
 // <!> fixme: move y scaling to the lane (the lanes is also responsible for drawing any y-axis rulers)
 - (CPArray)dataForLane:(TimeLane)lane
 {
@@ -338,8 +347,8 @@ TLVRulerPositionBelow = 2;
     var pixelWidth = _rulerRect.size.width - (_hideVerticalRulers? 0:VRULER_WIDTH);
     var pixelHeight = lane._frame.size.height;
 
-    var maxY = -9007199254740990,
-        minY =  9007199254740990;
+    var maxY = HUGE_NUMBER * (-1),
+        minY = HUGE_NUMBER;
 
     for (var i = 0; i < length; i++)
     {   var val = [inarray[i] valueForKey:_valueKey];
@@ -597,11 +606,13 @@ TLVRulerPositionBelow = 2;
             [_axisDateFormatter setDateFormat:@"dd.MM.YY"];
         break;
         case TLVGranularityMonth:
-            secondsBetween = (60*60*24*7);
+            secondsBetween = (60 * 60 * 24 * 31);
             [_axisDateFormatter setDateFormat:@"MM.YY"];
         break;
         default:
+            secondsBetween = (60 * 60 * 24 * 366);
             [_axisDateFormatter setDateFormat:@"YYYY"];
+
     }
     var numSteps = _range.length / secondsBetween;
     var gapBetween = pixelWidth / numSteps,
@@ -609,7 +620,10 @@ TLVRulerPositionBelow = 2;
 
     // draw ticks and labels for ruler
     CGContextSetStrokeColor(ctx, _rulerTickColor);
+
     CGContextBeginPath(ctx);
+    CGContextMoveToPoint(ctx, (_hideVerticalRulers? 0:VRULER_WIDTH), CGRectGetMaxY(_rulerRect));
+    CGContextAddLineToPoint(ctx, _frame.size.width, CGRectGetMaxY(_rulerRect));
 
     for (var x = _hideVerticalRulers? 0:VRULER_WIDTH; x < pixelWidth; x += gapBetween, axisDate = [axisDate dateByAddingTimeInterval:secondsBetween])
     {
@@ -617,7 +631,7 @@ TLVRulerPositionBelow = 2;
         var labelSize = [label sizeWithFont:font];
         var leftPoint = CGPointMake(x - labelSize.width / 2, CGRectGetMaxY(_rulerRect) - TICK_HEIGHT - labelSize.height);
 
-        if (leftPoint.x < _rulerRect.origin.x || leftPoint.x + labelSize.width > pixelWidth || leftPoint.x < lastRightLabelX)
+        if (leftPoint.x < _rulerRect.origin.x || leftPoint.x + labelSize.width > pixelWidth + (_hideVerticalRulers? 0:VRULER_WIDTH) || leftPoint.x < lastRightLabelX)
             continue;
 
         lastRightLabelX = leftPoint.x + labelSize.width + 4;
@@ -685,6 +699,8 @@ TLVRulerPositionBelow = 2;
     [super setObjectValue:someValue];
     _range = [self getDateRange];
     [self tile];
+    [self setNeedsDisplay:YES];
+    [_timeLanes makeObjectsPerformSelector:@selector(setNeedsDisplay:) withObject:YES];
 }
 @end
 
