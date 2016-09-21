@@ -5,7 +5,8 @@
  * Copyright 2016, Your Company All rights reserved.
  */
 
-// add clipscalemarkers with the mouse (left / right of midline)
+// y-ruler label
+// auto-y-scale instead of equal-scaling (time range)
 // fixme: lane height: respect setAutoresizingMask:CPViewMinXMargin | CPViewMaxXMargin | CPViewMinYMargin | CPViewMaxYMargin
 // fixme: flag for overlaying lanes
 // draw vertical hairline during dragging
@@ -91,7 +92,16 @@ TLVRulerPositionBelow = 2;
     CGContextMoveToPoint(context, VRULER_WIDTH, 0);
     CGContextAddLineToPoint(context, VRULER_WIDTH, _frame.size.height);
 
-// Math.ceil(x / 5) * 5
+/*
+
+double range = _valueRange.length;
+var tickCount = 10;
+var unroundedTickSize = range / (tickCount - 1);
+var x = Math.ceil(Math.log10(unroundedTickSize) - 1);
+var pow10x = Math.pow(10, x);
+var roundedTickRange = Math.ceil(unroundedTickSize / pow10x) * pow10x;
+*/
+
     for (var y = 0; y < pixelHeight; y += gapBetween, yLabel -= gapBetweenLabel)
     {
         var label = [CPString stringWithFormat:"%3.2f", yLabel];
@@ -111,21 +121,21 @@ TLVRulerPositionBelow = 2;
     CGContextSetLineWidth(context, 1);
     CGContextStrokePath(context);
 
-/*
-// <!> fixme: draw this in the ruler
+    // draw ruler title
     if(_styleFlags & TLVLaneLaneLabel && _label)
     {
         var labelSize = [_label sizeWithFont:font];
         var leftPoint=CGPointMake(_frame.size.width / 2 - labelSize.width / 2, 4);
 
-        CGContextSelectFont(context, font);
-        CGContextSetTextPosition(context, leftPoint.x, leftPoint.y);
-        CGContextSetFillColor(context, _laneColor);
-        CGContextSetStrokeColor(context, _laneColor);
-        CGContextShowText(context, _label);
+        CGContextSaveGState(context);
+        CGContextSetFillColor(context, _timelineView._rulerLabelColor);
+        CGContextSetStrokeColor(context, _timelineView._rulerLabelColor);
+        // CGContextSetTextMatrix(context, CGAffineTransformMakeRotation((-0.5) * Math.PI));
+        context.translate(labelSize.height, _frame.size.height / 2 + labelSize.width / 2);
+        context.rotate((-0.5) * Math.PI);
+        CGContextShowTextAtPoint(context, 0, 0,  _label);
+        CGContextRestoreGState(context);
     }
-*/
-
 }
 
 - (void)drawRect:(CGRect)rect
@@ -571,6 +581,24 @@ TLVRulerPositionBelow = 2;
             _draggingRulerMarker = rulerMarker;
 		    [self _moveRulerMarkerWithEvent:event];
         break;
+        default:
+            var xraw = mouseLocation.x - (_hideVerticalRulers? 0:VRULER_WIDTH);
+            xraw /= _rulerRect.size.width;
+            var x =  xraw * _range.length + _range.location;
+
+            if (mouseLocation.x < _rulerRect.size.width / 2 && _clipScaleLowerDate <= [CPDate distantPast])
+            {
+                _clipScaleLowerDate = [CPDate dateWithTimeIntervalSinceReferenceDate:x];
+                _draggingRulerMarker = TLVRulerMarkerLeft;
+                [self setNeedsDisplay:YES];
+		        [self _moveRulerMarkerWithEvent:event];
+            } else if (mouseLocation.x >= _rulerRect.size.width / 2 && _clipScaleUpperDate >= [CPDate distantPast])
+            {
+                _clipScaleUpperDate = [CPDate dateWithTimeIntervalSinceReferenceDate:x];
+                _draggingRulerMarker = TLVRulerMarkerRight;
+                [self setNeedsDisplay:YES];
+		        [self _moveRulerMarkerWithEvent:event];
+            }
 	}
 }
 
