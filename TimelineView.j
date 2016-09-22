@@ -5,7 +5,6 @@
  * Copyright 2016, Your Company All rights reserved.
  */
 
-// y-ruler label
 // auto-y-scale instead of equal-scaling (time range)
 // fixme: lane height: respect setAutoresizingMask:CPViewMinXMargin | CPViewMaxXMargin | CPViewMinYMargin | CPViewMaxYMargin
 // fixme: flag for overlaying lanes
@@ -71,6 +70,16 @@ TLVRulerPositionBelow = 2;
     _styleFlags &= ~flagsToRemove
 }
 
+-(CPFloat)_roundValue:(CPFloat)aValue
+{
+    if (!aValue)
+        return 0;
+
+
+    var pow10x = Math.pow(10, Math.ceil(Math.log10(Math.abs(aValue)) - 1));
+    return Math.ceil(aValue / pow10x) * pow10x;
+
+}
 - (void)_drawVerticalRuler
 {
     if (!_valueRange)
@@ -79,9 +88,14 @@ TLVRulerPositionBelow = 2;
     var context = [[CPGraphicsContext currentContext] graphicsPort];
     var pixelHeight = _frame.size.height;
     var font = [CPFont systemFontOfSize:11];
-    var gapBetween = _frame.size.height / 10;
-    var gapBetweenLabel = _valueRange.length / 10;
-    var yLabel = CPMaxRange(_valueRange);
+
+    var tickCount = Math.ceil(pixelHeight / 30);
+    var tickSize = _valueRange.length / (tickCount - 1);
+    var roundedTickRange = [self _roundValue:tickSize];
+
+    var gapBetween = pixelHeight * (roundedTickRange / _valueRange.length);
+    var yLabel = [self _roundValue:CPMaxRange(_valueRange)];
+ document.title= yLabel+ ' '+ _valueRange.location+' '+ CPMaxRange(_valueRange)
 
     [[CPColor whiteColor] set];
     CGContextFillRect(context, CGRectMake( 0, 0, VRULER_WIDTH, _frame.size.height));
@@ -90,29 +104,19 @@ TLVRulerPositionBelow = 2;
 
     CGContextBeginPath(context);
     CGContextMoveToPoint(context, VRULER_WIDTH, 0);
-    CGContextAddLineToPoint(context, VRULER_WIDTH, _frame.size.height);
+    CGContextAddLineToPoint(context, VRULER_WIDTH, pixelHeight);
 
-/*
-
-double range = _valueRange.length;
-var tickCount = 10;
-var unroundedTickSize = range / (tickCount - 1);
-var x = Math.ceil(Math.log10(unroundedTickSize) - 1);
-var pow10x = Math.pow(10, x);
-var roundedTickRange = Math.ceil(unroundedTickSize / pow10x) * pow10x;
-*/
-
-    for (var y = 0; y < pixelHeight; y += gapBetween, yLabel -= gapBetweenLabel)
+    for (var y = pixelHeight * ((CPMaxRange(_valueRange) - yLabel) / _valueRange.length); y < pixelHeight; y += gapBetween, yLabel -= roundedTickRange)
     {
-        var label = [CPString stringWithFormat:"%3.2f", yLabel];
+        var label = [CPString stringWithFormat:"%d", yLabel];
         var labelSize = [label sizeWithFont:font];
-        var leftPoint = CGPointMake(VRULER_WIDTH - labelSize.width - TICK_WIDTH, y - labelSize.height / 2);
+        var leftPoint = CGPointMake(VRULER_WIDTH - labelSize.width - TICK_WIDTH, y );
 
         CGContextMoveToPoint(context, VRULER_WIDTH - TICK_WIDTH, leftPoint.y);
         CGContextAddLineToPoint(context, VRULER_WIDTH, leftPoint.y);
         CGContextSaveGState(context);
         CGContextSelectFont(context, font);
-        CGContextSetTextPosition(context, leftPoint.x, leftPoint.y);
+        CGContextSetTextPosition(context, leftPoint.x, leftPoint.y );
         CGContextSetFillColor(context, _timelineView._rulerLabelColor);
         CGContextSetStrokeColor(context, _timelineView._rulerLabelColor);
         CGContextShowText(context, label);
@@ -131,7 +135,7 @@ var roundedTickRange = Math.ceil(unroundedTickSize / pow10x) * pow10x;
         CGContextSetFillColor(context, _timelineView._rulerLabelColor);
         CGContextSetStrokeColor(context, _timelineView._rulerLabelColor);
         // CGContextSetTextMatrix(context, CGAffineTransformMakeRotation((-0.5) * Math.PI));
-        context.translate(labelSize.height, _frame.size.height / 2 + labelSize.width / 2);
+        context.translate(labelSize.height / 2, _frame.size.height / 2 + labelSize.width / 2);
         context.rotate((-0.5) * Math.PI);
         CGContextShowTextAtPoint(context, 0, 0,  _label);
         CGContextRestoreGState(context);
@@ -741,5 +745,5 @@ var roundedTickRange = Math.ceil(unroundedTickSize / pow10x) * pow10x;
 + (Class) platformObjectClass
 {    return [TLVTimelineView class];
 }
-@end
 */
+@end
