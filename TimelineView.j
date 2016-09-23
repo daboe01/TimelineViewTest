@@ -5,7 +5,8 @@
  * Copyright 2016, Your Company All rights reserved.
  */
 
-// fixme: lane height tiling (use setAutoresizingMask:CPViewMinXMargin | CPViewMaxXMargin | CPViewMinYMargin | CPViewMaxYMargin)
+// support single points in time
+// fixme: lane height tiling with horizontal split view
 // fixme: flag for overlaying lanes
 // draw vertical hairline during dragging
 // fixme: test TLVRulerPositionBelow (flip clipscale markers here)
@@ -406,6 +407,23 @@ TLVRulerPositionBelow = 2;
        }
        outarray.push(o);
     }
+
+    var maxY = HUGE_NUMBER * (-1),
+        minY = HUGE_NUMBER,
+        length = outarray.length;
+
+    lane._naturalHeight = 0;
+
+    for (var i = 0; i < length; i++)
+    {   var val = outarray[i];
+        if (val.width !== undefined)
+        {   minY = MIN(minY, val.y);
+            maxY = MAX(maxY, val.y);
+            lane._naturalHeight = maxY - minY + TIME_RANGE_DEFAULT_HEIGHT;
+        }
+    }
+
+
     return outarray;
 }
 
@@ -717,15 +735,32 @@ TLVRulerPositionBelow = 2;
 
    var laneCount = [_timeLanes count],
        currentOrigin = CGPointMake(0, (_rulerPosition == TLVRulerPositionAbove? CGRectGetMaxY(_rulerRect) : 0)),
-       laneHeight = (_frame.size.height - _rulerRect.size.height) / laneCount;
-// <!> fixme use flexible / dynamic sizing
+       totalHeight = _frame.size.height,
+       fixedCount = 0;
+
+    for (var i = 0; i < laneCount; i++)
+    {
+        var currentLane = [_timeLanes objectAtIndex:i];
+
+        if (currentLane._naturalHeight === undefined)
+            [self dataForLane:currentLane];  // calculate and cache _naturalHeight;
+
+        if (currentLane._naturalHeight)
+        {   totalHeight -= currentLane._naturalHeight;
+            fixedCount++;
+        }
+
+    }
+
+    var laneHeight = (totalHeight - _rulerRect.size.height) / (laneCount - fixedCount);
 
     for (var i = 0; i < laneCount; i++)
     {
         var currentLane = [_timeLanes objectAtIndex:i];
         [currentLane setFrameOrigin:currentOrigin];
-        [currentLane setFrameSize:CPMakeSize(self._frame.size.width, laneHeight)];
-        currentOrigin.y += laneHeight;
+        var effectiveHeight = currentLane._naturalHeight? currentLane._naturalHeight : laneHeight;
+        [currentLane setFrameSize:CPMakeSize(self._frame.size.width, effectiveHeight)];
+        currentOrigin.y += effectiveHeight;
     }
 }
 // the array has to contain KVC-compliant objects that have CPDates stored in the key specified by timeKey
