@@ -419,7 +419,7 @@ TLVRulerPositionBelow = 2;
         if (val.width !== undefined)
         {   minY = MIN(minY, val.y);
             maxY = MAX(maxY, val.y);
-            lane._naturalHeight = maxY - minY + TIME_RANGE_DEFAULT_HEIGHT;
+            lane._naturalHeight = maxY - minY + TIME_RANGE_DEFAULT_HEIGHT + 4;
         }
     }
 
@@ -742,8 +742,9 @@ TLVRulerPositionBelow = 2;
     {
         var currentLane = [_timeLanes objectAtIndex:i];
 
-        if (currentLane._naturalHeight === undefined)
-            [self dataForLane:currentLane];  // calculate and cache _naturalHeight;
+        // this is expensive. run this only when stacking can happen (flags)
+        if (currentLane._styleFlags & (TLVLaneTimePoint|TLVLaneLaneLabel) && currentLane._naturalHeight === undefined)
+            [self dataForLane:currentLane];  // calculate height and cache in _naturalHeight;
 
         if (currentLane._naturalHeight)
         {   totalHeight -= currentLane._naturalHeight;
