@@ -231,6 +231,9 @@ TLVRulerPositionBelow = 2;
 }
 - (id)initWithShortString:(CPString)description
 {
+    if (!description)
+        return nil;
+
     var format = /(\d{4})-(\d{2})-(\d{2})/,
         d = description.match(new RegExp(format));
     return new Date(d[1], d[2] - 1, d[3]);
@@ -745,5 +748,5 @@ TLVRulerPositionBelow = 2;
 + (Class) platformObjectClass
 {    return [TLVTimelineView class];
 }
-*/
 @end
+*/

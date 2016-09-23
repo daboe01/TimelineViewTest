@@ -7,19 +7,6 @@
  
 @import "TimelineView.j"
 
-@implementation CPDate(shortDescription)
-- (CPString)shortDescription
-{
-    return [CPString stringWithFormat:@"%04d-%02d-%02d", self.getFullYear(), self.getMonth() + 1, self.getDate()];
-}
-- (id)initWithShortString:(CPString)description
-{
-    var format = /(\d{4})-(\d{2})-(\d{2})/,
-        d = description.match(new RegExp(format));
-    return new Date(d[1], d[2] - 1, d[3]);
-}
-@end
-
 @implementation AppController : CPObject
 {
     TimelineView  _tlView;
@@ -76,19 +63,24 @@
 
     _tlView = [[TLVTimelineView alloc] initWithFrame:CGRectMake(0, 0,500,500)];
     [_tlView setLaneKey:'lane'];
+    [_tlView setTimeEndKey:'date2'];
     [_tlView setClipScaleLowerDate:[[CPDate alloc] initWithShortString:'2006-01-03' ] ];
     [_tlView setClipScaleUpperDate:[[CPDate alloc] initWithShortString:'2006-01-07' ] ];
 
     var myLane=[TLVTimeLane new];
     [myLane addStyleFlags:TLVLanePolygon|TLVLaneCircle];
+    [myLane setHasVerticalRuler:YES];
     [_tlView addLane:myLane withIdentifier:'private'];
 
     var myLane=[TLVTimeLane new];
     [myLane addStyleFlags:TLVLanePolygon];
+    [myLane setHasVerticalRuler:YES];
     [_tlView addLane:myLane withIdentifier:'work'];
 
     var myLane=[TLVTimeLane new];
-    [myLane setLabel:"This is a time range"]
+    [myLane setHasVerticalRuler:YES];
+
+    [myLane setLabel:"This is a time range"];
     [myLane addStyleFlags:TLVLaneTimeRange|TLVLaneLaneLabel|TLVLaneValueInline];
     [_tlView addLane:myLane withIdentifier:'other'];
 
@@ -115,16 +107,6 @@
     [contentView addSubview:mybutton]
 
     [theWindow orderFront:self];
-}
-
-- (void) doClipscale:(id)sender
-{
-    [_tlView shoudDrawClipscaled:YES]
-}
-
-- (void) doScale:(id)sender
-{
-    [_tlView setScale:[sender floatValue]]
 }
 
 @end
