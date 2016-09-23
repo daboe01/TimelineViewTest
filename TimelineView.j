@@ -5,8 +5,7 @@
  * Copyright 2016, Your Company All rights reserved.
  */
 
-// auto-y-scale instead of equal-scaling (time range)
-// fixme: lane height: respect setAutoresizingMask:CPViewMinXMargin | CPViewMaxXMargin | CPViewMinYMargin | CPViewMaxYMargin
+// fixme: lane height tiling (use setAutoresizingMask:CPViewMinXMargin | CPViewMaxXMargin | CPViewMinYMargin | CPViewMaxYMargin)
 // fixme: flag for overlaying lanes
 // draw vertical hairline during dragging
 // fixme: test TLVRulerPositionBelow (flip clipscale markers here)
@@ -95,7 +94,6 @@ TLVRulerPositionBelow = 2;
 
     var gapBetween = pixelHeight * (roundedTickRange / _valueRange.length);
     var yLabel = [self _roundValue:CPMaxRange(_valueRange)];
- document.title= yLabel+ ' '+ _valueRange.location+' '+ CPMaxRange(_valueRange)
 
     [[CPColor whiteColor] set];
     CGContextFillRect(context, CGRectMake( 0, 0, VRULER_WIDTH, _frame.size.height));
@@ -108,6 +106,9 @@ TLVRulerPositionBelow = 2;
 
     for (var y = pixelHeight * ((CPMaxRange(_valueRange) - yLabel) / _valueRange.length); y < pixelHeight; y += gapBetween, yLabel -= roundedTickRange)
     {
+        if (y < 1)
+            continue;
+
         var label = [CPString stringWithFormat:"%d", yLabel];
         var labelSize = [label sizeWithFont:font];
         var leftPoint = CGPointMake(VRULER_WIDTH - labelSize.width - TICK_WIDTH, y );
@@ -194,8 +195,7 @@ TLVRulerPositionBelow = 2;
             if (_styleFlags & TLVLaneValueInline && o.value)
             {
                 var labelSize = [o.value sizeWithFont:font];
-                var leftPoint = CGPointMake(o.x + o.width / 2 - labelSize.width / 2);
-
+                var leftPoint = CGPointMake(o.x + o.width / 2 - labelSize.width / 2, o.y + TIME_RANGE_DEFAULT_HEIGHT / 2 + (TIME_RANGE_DEFAULT_HEIGHT - labelSize.height) / 2);
                 CGContextSaveGState(context);
                 CGContextSelectFont(context, font);
                 CGContextSetTextPosition(context, leftPoint.x, leftPoint.y);
