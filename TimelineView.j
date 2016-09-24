@@ -453,7 +453,6 @@ TLVRulerPositionBelow = 2;
         }
     }
 
-
     return outarray;
 }
 
