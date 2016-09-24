@@ -5,12 +5,6 @@
  * Copyright 2016, Daniel Boehringer All rights reserved.
  */
 
-// support single points in time
-// fixme: lane height tiling with horizontal split view
-// fixme: flag for overlaying lanes
-// draw vertical hairline during dragging
-// fixme: test TLVRulerPositionBelow (flip clipscale markers here)
-
 @import <Foundation/CPObject.j>
 
 TLVLaneStylePlain = 0;
