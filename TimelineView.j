@@ -51,6 +51,7 @@ TLVRulerPositionBelow = 2;
     CPUInteger   _styleFlags @accessors(property=styleFlags);
     CPColor      _laneColor;
     CPFont       _valueFont;
+    CPUInteger   _minimumHeight @accessors(property=minimumHeight);
 
     // private housekeeping stuff
     CPRange      _valueRange;
@@ -199,7 +200,7 @@ TLVRulerPositionBelow = 2;
                 CGContextStrokeRect(context, myrect);
 
             if (_styleFlags & TLVLaneTimePoint)
-                CGContextFillEllipseInRect(context, CPMakeRect(o.x - 3, o.y,  6, 6));
+                CGContextFillEllipseInRect(context, CPMakeRect(o.x, o.y,  6, 6));
 
             if (_styleFlags & TLVLaneValueInline && o.value)
             {
@@ -226,7 +227,8 @@ TLVRulerPositionBelow = 2;
     if  (self = [super initWithFrame:aFrame])
     {
         _laneColor = [CPColor blueColor];
-        _valueFont = [CPFont systemFontOfSize:11];    
+        _valueFont = [CPFont systemFontOfSize:11];
+        _minimumHeight = 0;  
 
     }
 
@@ -453,6 +455,7 @@ TLVRulerPositionBelow = 2;
         {   minY = MIN(minY, val.y);
             maxY = MAX(maxY, val.y);
             lane._naturalHeight = maxY - minY + TIME_RANGE_DEFAULT_HEIGHT + 4;
+            lane._naturalHeight = MAX(lane._naturalHeight, lane._minimumHeight);
         }
     }
 

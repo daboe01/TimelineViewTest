@@ -83,7 +83,7 @@
 
     var myLane=[TLVTimeLane new];
     [myLane setHasVerticalRuler:YES];
-
+    [myLane setMinimumHeight:120];
     [myLane setLabel:"This is a time range"];
     [myLane addStyleFlags:TLVLaneTimeRange|TLVLaneLaneLabel|TLVLaneValueInline];
     [_tlView addLane:myLane withIdentifier:'other'];
