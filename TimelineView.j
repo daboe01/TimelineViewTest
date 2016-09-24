@@ -50,6 +50,7 @@ TLVRulerPositionBelow = 2;
     TimelineView _timelineView @accessors(property = timelineView);
     CPUInteger   _styleFlags @accessors(property=styleFlags);
     CPColor      _laneColor;
+    CPFont       _valueFont;
 
     // private housekeeping stuff
     CPRange      _valueRange;
@@ -114,6 +115,9 @@ TLVRulerPositionBelow = 2;
         var labelSize = [label sizeWithFont:font];
         var leftPoint = CGPointMake(VRULER_WIDTH - labelSize.width - TICK_WIDTH, y );
 
+        if (leftPoint.y + labelSize.height > _frame.size.height)
+            continue;
+
         CGContextMoveToPoint(context, VRULER_WIDTH - TICK_WIDTH, leftPoint.y);
         CGContextAddLineToPoint(context, VRULER_WIDTH, leftPoint.y);
         CGContextSaveGState(context);
@@ -149,7 +153,6 @@ TLVRulerPositionBelow = 2;
     var context = [[CPGraphicsContext currentContext] graphicsPort];
     var myData = [_timelineView dataForLane:self];
     var n =  [myData count];
-    var font = [CPFont systemFontOfSize:11];
 
     if(_styleFlags & TLVLanePolygon)
     {
@@ -182,7 +185,7 @@ TLVRulerPositionBelow = 2;
         }
     }
 
-    if(_styleFlags & TLVLaneTimeRange)
+    if(_styleFlags & (TLVLaneTimeRange|TLVLaneTimePoint))
     {
         CGContextSetFillColor(context, _laneColor);
         CGContextSetStrokeColor(context, _laneColor);
@@ -191,14 +194,19 @@ TLVRulerPositionBelow = 2;
         {
             var o = myData[i];
             var myrect = CPMakeRect(o.x + 4, o.y + 4,  o.width - 4, TIME_RANGE_DEFAULT_HEIGHT - 4);
-            CGContextStrokeRect(context, myrect);
+
+            if (_styleFlags & TLVLaneTimeRange)
+                CGContextStrokeRect(context, myrect);
+
+            if (_styleFlags & TLVLaneTimePoint)
+                CGContextFillEllipseInRect(context, CPMakeRect(o.x - 3, o.y,  6, 6));
 
             if (_styleFlags & TLVLaneValueInline && o.value)
             {
-                var labelSize = [o.value sizeWithFont:font];
+                var labelSize = [o.value sizeWithFont:_valueFont];
                 var leftPoint = CGPointMake(o.x + o.width / 2 - labelSize.width / 2, o.y + TIME_RANGE_DEFAULT_HEIGHT / 2 + (TIME_RANGE_DEFAULT_HEIGHT - labelSize.height) / 2);
                 CGContextSaveGState(context);
-                CGContextSelectFont(context, font);
+                CGContextSelectFont(context, _valueFont);
                 CGContextSetTextPosition(context, leftPoint.x, leftPoint.y);
                 CGContextSetFillColor(context, _laneColor);
                 CGContextSetStrokeColor(context, _laneColor);
@@ -217,7 +225,9 @@ TLVRulerPositionBelow = 2;
 {
     if  (self = [super initWithFrame:aFrame])
     {
-        _laneColor = [CPColor blueColor]
+        _laneColor = [CPColor blueColor];
+        _valueFont = [CPFont systemFontOfSize:11];    
+
     }
 
     return self;
@@ -390,19 +400,42 @@ TLVRulerPositionBelow = 2;
            {
                var x1 = ((xraw1 - _range.location) / _range.length) * pixelWidth + (_hideVerticalRulers? 0:VRULER_WIDTH);
                o.width = x1 - x;
-               var baselineY = pixelHeight - TIME_RANGE_DEFAULT_HEIGHT - 5;
-               o.y = baselineY;
+           }
+       }
 
-               // stack overlapping rectangles
-               var length_o = outarray.length;
-               for (var j = 0; j < length_o; j++)
+        if (lane._styleFlags & TLVLaneTimePoint)
+           o.width = 0;
+
+        if(o.width !== undefined){
+           var baselineY = pixelHeight - TIME_RANGE_DEFAULT_HEIGHT - 5;
+           o.y = baselineY;
+
+           var newRect;
+
+            //if point in time ->width is null->use font sizing for stacking
+            if (!o.width)
+            {
+               var labelSize = [o.value sizeWithFont:lane._valueFont];
+               newRect = CGRectMake(o.x - labelSize.width / 2, o.y - TIME_RANGE_DEFAULT_HEIGHT, labelSize.width, TIME_RANGE_DEFAULT_HEIGHT);
+            }
+            else
+               newRect = CGRectMake(o.x, o.y - TIME_RANGE_DEFAULT_HEIGHT, o.width, TIME_RANGE_DEFAULT_HEIGHT);
+
+           // stack overlapping rectangles
+           var length_o = outarray.length;
+           for (var j = 0; j < length_o; j++)
+           {
+               var existingRect;
+               if (!outarray[j].width)
                {
-                   var existingRect = CGRectMake(outarray[j].x, outarray[j].y - TIME_RANGE_DEFAULT_HEIGHT, outarray[j].width, TIME_RANGE_DEFAULT_HEIGHT);
-                   var newRect = CGRectMake(o.x, o.y - TIME_RANGE_DEFAULT_HEIGHT, o.width, TIME_RANGE_DEFAULT_HEIGHT);
-
-                   if (CGRectIntersectsRect(newRect, existingRect) )
-                       o.y -= TIME_RANGE_DEFAULT_HEIGHT - 2;
+                   var labelSize = [outarray[j].value sizeWithFont:lane._valueFont];
+                   existingRect = CGRectMake(outarray[j].x - labelSize.width / 2, outarray[j].y - TIME_RANGE_DEFAULT_HEIGHT, labelSize.width, TIME_RANGE_DEFAULT_HEIGHT);
                }
+               else
+                   existingRect = CGRectMake(outarray[j].x, outarray[j].y - TIME_RANGE_DEFAULT_HEIGHT, outarray[j].width, TIME_RANGE_DEFAULT_HEIGHT);
+
+               if (CGRectIntersectsRect(newRect, existingRect) )
+                   o.y -= TIME_RANGE_DEFAULT_HEIGHT - 2;
            }
        }
        outarray.push(o);
@@ -742,7 +775,7 @@ TLVRulerPositionBelow = 2;
     {
         var currentLane = [_timeLanes objectAtIndex:i];
 
-        // this is expensive. run this only when stacking can happen (flags)
+        // this is expensive. run this only when stacking can happen
         if (currentLane._styleFlags & (TLVLaneTimePoint|TLVLaneLaneLabel) && currentLane._naturalHeight === undefined)
             [self dataForLane:currentLane];  // calculate height and cache in _naturalHeight;
 
@@ -750,7 +783,6 @@ TLVRulerPositionBelow = 2;
         {   totalHeight -= currentLane._naturalHeight;
             fixedCount++;
         }
-
     }
 
     var laneHeight = (totalHeight - _rulerRect.size.height) / (laneCount - fixedCount);

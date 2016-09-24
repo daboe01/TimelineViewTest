@@ -32,7 +32,11 @@
 
                    ['other',   '2006-01-01', '2006-01-04', 'Arbeit'],
                    ['other',   '2006-01-02', '2006-01-04', 'Freizeit'],
-                   ['other',   '2006-01-07', '2006-02-04', 'Sonstiges']
+                   ['other',   '2006-01-07', '2006-02-04', 'Sonstiges'],
+
+                   ['other2',   '2006-01-01', 'Arbeit'],
+                   ['other2',   '2006-01-02', 'Freizeit'],
+                   ['other2',   '2006-01-07', 'Sonstiges']
 
                  ];
     var out = [];
@@ -83,6 +87,12 @@
     [myLane setLabel:"This is a time range"];
     [myLane addStyleFlags:TLVLaneTimeRange|TLVLaneLaneLabel|TLVLaneValueInline];
     [_tlView addLane:myLane withIdentifier:'other'];
+
+    var myLane=[TLVTimeLane new];
+    [myLane setHasVerticalRuler:YES];
+    [myLane setLabel:"These are simple dates"];
+    [myLane addStyleFlags:TLVLaneTimePoint|TLVLaneValueInline];
+    [_tlView addLane:myLane withIdentifier:'other2'];
 
     [_tlView setObjectValue:[self _compiledTestData]];
 
