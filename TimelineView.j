@@ -2,7 +2,7 @@
  * TimelineView.j
  *
  * Created by daboe01 on August 23, 2016.
- * Copyright 2016, Your Company All rights reserved.
+ * Copyright 2016, Daniel Boehringer All rights reserved.
  */
 
 // support single points in time
