@@ -422,7 +422,7 @@ TLVRulerPositionBelow = 2;
            for (var j = 0; j < length_o; j++)
            {
                var existingRect;
-               if (!outarray[j].width)
+               if (!outarray[j].width) // point in time
                {
                    var labelSize = [outarray[j].value sizeWithFont:lane._valueFont];
                    existingRect = CGRectMake(outarray[j].x - labelSize.width / 2, outarray[j].y - TIME_RANGE_DEFAULT_HEIGHT, labelSize.width, TIME_RANGE_DEFAULT_HEIGHT);
@@ -431,7 +431,7 @@ TLVRulerPositionBelow = 2;
                    existingRect = CGRectMake(outarray[j].x, outarray[j].y - TIME_RANGE_DEFAULT_HEIGHT, outarray[j].width, TIME_RANGE_DEFAULT_HEIGHT);
 
                if (CGRectIntersectsRect(newRect, existingRect) )
-                   o.y -= TIME_RANGE_DEFAULT_HEIGHT - 2;
+                   o.y -= TIME_RANGE_DEFAULT_HEIGHT;
            }
        }
        outarray.push(o);
@@ -448,7 +448,7 @@ TLVRulerPositionBelow = 2;
         if (val.width !== undefined)
         {   minY = MIN(minY, val.y);
             maxY = MAX(maxY, val.y);
-            lane._naturalHeight = maxY - minY + TIME_RANGE_DEFAULT_HEIGHT + 4;
+            lane._naturalHeight = maxY - minY + TIME_RANGE_DEFAULT_HEIGHT + 8;
             lane._naturalHeight = MAX(lane._naturalHeight, lane._minimumHeight);
         }
     }
