@@ -1,6 +1,6 @@
 # TimelineView
 * This is a multipurpose timeline view for cappuccino.
-* The view maintains a flexible horizontal master time axis with automatic flexible labels (days to years).
+* The view maintains a responsive horizontal master time axis.
 * The ruler supports a left and a right clip marker that can be set and moved with the mouse.
 * These markers can be used to clip and scale the contents through an action method.
 * The view manages one or several lanes that are stacked horizontally. A lane represent either numeric or categorial data.
