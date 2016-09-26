@@ -5,6 +5,8 @@
  * Copyright 2016, Daniel Boehringer All rights reserved.
  */
 
+// fixme: does not currently draw solitaty points
+
 @import <Foundation/CPObject.j>
 
 TLVLaneStylePlain = 0;
@@ -36,6 +38,7 @@ TLVRulerPositionNone = 0;
 TLVRulerPositionAbove = 1;
 TLVRulerPositionBelow = 2;
 
+
 @implementation TLVTimeLane : CPView
 {
     CPString     _laneIdentifier @accessors(property = laneIdentifier);
@@ -46,14 +49,14 @@ TLVRulerPositionBelow = 2;
     CPColor      _laneColor;
     CPFont       _valueFont;
     CPUInteger   _minimumHeight @accessors(property=minimumHeight);
-
+    
     // private housekeeping stuff
     CPRange      _valueRange;
 }
 
 + (CPArray) laneColorCodes
 {
-    return ["8DD3C7","BEBADA","FB8072","80B1D3","FDB462","B3DE69","FCCDE5","D9D9D9","BC80BD"]; // brewer.pal(10, "Set3") (RColorBrewer)
+    return ["E41A1C","377EB8","4DAF4A","984EA3","FF7F00","FFF33","A65628","F781BF"]; // brewer.pal(10, "Set3") (RColorBrewer)
 }
 
 - (void)addStyleFlags:(CPUInteger)flagsToAdd
@@ -70,49 +73,71 @@ TLVRulerPositionBelow = 2;
 {
     if (!aValue)
         return 0;
-
-
+    
+    
     var pow10x = Math.pow(10, Math.ceil(Math.log10(Math.abs(aValue)) - 1));
     return Math.ceil(aValue / pow10x) * pow10x;
-
+    
 }
 - (void)_drawVerticalRuler
 {
-    if (!_valueRange)
-        return;
-
     var context = [[CPGraphicsContext currentContext] graphicsPort];
     var pixelHeight = _frame.size.height;
     var font = [CPFont systemFontOfSize:11];
-
+    
+    [[CPColor whiteColor] set];
+    CGContextFillRect(context, CGRectMake( 0, 0, VRULER_WIDTH, _frame.size.height));
+    
+    // draw ruler title
+    if(_styleFlags & TLVLaneLaneLabel && _label)
+    {
+        var labelSize = [_label sizeWithFont:font];
+        var leftPoint=CGPointMake(_frame.size.width / 2 - labelSize.width / 2, 4);
+        
+        CGContextSaveGState(context);
+        CGContextSetFillColor(context, _timelineView._rulerLabelColor);
+        CGContextSetStrokeColor(context, _timelineView._rulerLabelColor);
+        // CGContextSetTextMatrix(context, CGAffineTransformMakeRotation((-0.5) * Math.PI));
+        context.translate(labelSize.height / 2, _frame.size.height / 2 + labelSize.width / 2);
+        context.rotate((-0.5) * Math.PI);
+        CGContextShowTextAtPoint(context, 0, 0,  _label);
+        CGContextRestoreGState(context);
+    }
+    CGContextSetStrokeColor(context, _timelineView._rulerTickColor);
+    
+    CGContextBeginPath(context);
+    CGContextMoveToPoint(context, 0, 0);
+    CGContextAddLineToPoint(context, VRULER_WIDTH, 0);
+    CGContextStrokePath(context);
+    
+    if (!_valueRange || CPMaxRange(_valueRange) >= HUGE_NUMBER || _valueRange.location <= HUGE_NUMBER*(-1) || _valueRange.location >= HUGE_NUMBER || !_valueRange.length)
+        return;
+    
     var tickCount = Math.ceil(pixelHeight / 30);
     var tickSize = _valueRange.length / (tickCount - 1);
     var roundedTickRange = [self _roundValue:tickSize];
-
+    
     var gapBetween = pixelHeight * (roundedTickRange / _valueRange.length);
     var yLabel = [self _roundValue:CPMaxRange(_valueRange)];
-
-    [[CPColor whiteColor] set];
-    CGContextFillRect(context, CGRectMake( 0, 0, VRULER_WIDTH, _frame.size.height));
-
-    CGContextSetStrokeColor(context, _timelineView._rulerTickColor);
-
+    
+    
+    
     CGContextBeginPath(context);
     CGContextMoveToPoint(context, VRULER_WIDTH, 0);
     CGContextAddLineToPoint(context, VRULER_WIDTH, pixelHeight);
-
+    
     for (var y = pixelHeight * ((CPMaxRange(_valueRange) - yLabel) / _valueRange.length); y < pixelHeight; y += gapBetween, yLabel -= roundedTickRange)
     {
         if (y < 1)
             continue;
-
-        var label = [CPString stringWithFormat:"%d", yLabel];
+        
+        var label = [CPString stringWithFormat:"%3.2f", yLabel];
         var labelSize = [label sizeWithFont:font];
         var leftPoint = CGPointMake(VRULER_WIDTH - labelSize.width - TICK_WIDTH, y );
-
+        
         if (leftPoint.y + labelSize.height > _frame.size.height)
             continue;
-
+        
         CGContextMoveToPoint(context, VRULER_WIDTH - TICK_WIDTH, leftPoint.y);
         CGContextAddLineToPoint(context, VRULER_WIDTH, leftPoint.y);
         CGContextSaveGState(context);
@@ -125,22 +150,6 @@ TLVRulerPositionBelow = 2;
     }
     CGContextSetLineWidth(context, 1);
     CGContextStrokePath(context);
-
-    // draw ruler title
-    if(_styleFlags & TLVLaneLaneLabel && _label)
-    {
-        var labelSize = [_label sizeWithFont:font];
-        var leftPoint=CGPointMake(_frame.size.width / 2 - labelSize.width / 2, 4);
-
-        CGContextSaveGState(context);
-        CGContextSetFillColor(context, _timelineView._rulerLabelColor);
-        CGContextSetStrokeColor(context, _timelineView._rulerLabelColor);
-        // CGContextSetTextMatrix(context, CGAffineTransformMakeRotation((-0.5) * Math.PI));
-        context.translate(labelSize.height / 2, _frame.size.height / 2 + labelSize.width / 2);
-        context.rotate((-0.5) * Math.PI);
-        CGContextShowTextAtPoint(context, 0, 0,  _label);
-        CGContextRestoreGState(context);
-    }
 }
 
 - (void)drawRect:(CGRect)rect
@@ -148,54 +157,54 @@ TLVRulerPositionBelow = 2;
     var context = [[CPGraphicsContext currentContext] graphicsPort];
     var myData = [_timelineView dataForLane:self];
     var n =  [myData count];
-
+    
     if(_styleFlags & TLVLanePolygon)
     {
         CGContextSetStrokeColor(context, _laneColor);
-
+        
         var first=YES;
-        for(var i = 0; i < n; i++) 
+        for(var i = 0; i < n; i++)
         {
             var o = myData[i];
-
+            
             if(first)
             {   first=NO;
                 CGContextBeginPath(context);
                 CGContextMoveToPoint(context, o.x, o.y);
             } else
                 CGContextAddLineToPoint(context, o.x, o.y);
-
+            
         }
         CGContextSetLineWidth(context, 1);
         CGContextStrokePath(context);
     }
-
+    
     if(_styleFlags & TLVLaneCircle)
     {
-        for(var i = 0; i < n; i++) 
+        for(var i = 0; i < n; i++)
         {
             var o = myData[i];
             var myrect = CPMakeRect(o.x - 2, o.y - 2,  4, 4);
             CGContextStrokeEllipseInRect(context, myrect);
         }
     }
-
+    
     if(_styleFlags & (TLVLaneTimeRange|TLVLaneTimePoint))
     {
         CGContextSetFillColor(context, _laneColor);
         CGContextSetStrokeColor(context, _laneColor);
-
-        for(var i = 0; i < n; i++) 
+        
+        for(var i = 0; i < n; i++)
         {
             var o = myData[i];
             var myrect = CPMakeRect(o.x + 4, o.y + 4,  o.width - 4, TIME_RANGE_DEFAULT_HEIGHT - 4);
-
+            
             if (_styleFlags & TLVLaneTimeRange)
                 CGContextStrokeRect(context, myrect);
-
+            
             if (_styleFlags & TLVLaneTimePoint)
                 CGContextFillEllipseInRect(context, CPMakeRect(o.x, o.y,  6, 6));
-
+            
             if (_styleFlags & TLVLaneValueInline && o.value)
             {
                 var labelSize = [o.value sizeWithFont:_valueFont];
@@ -210,10 +219,10 @@ TLVRulerPositionBelow = 2;
             }
         }
     }
-
+    
     if (_hasVerticalRuler)
         [self _drawVerticalRuler]
-}
+        }
 
 
 - (id)initWithFrame:(CGRect)aFrame
@@ -222,10 +231,10 @@ TLVRulerPositionBelow = 2;
     {
         _laneColor = [CPColor blueColor];
         _valueFont = [CPFont systemFontOfSize:11];
-        _minimumHeight = 0;  
-
+        _minimumHeight = 0;
+        
     }
-
+    
     return self;
 }
 
@@ -240,10 +249,13 @@ TLVRulerPositionBelow = 2;
 {
     if (!description)
         return nil;
-
+    
     var format = /(\d{4})-(\d{2})-(\d{2})/,
-        d = description.match(new RegExp(format));
+    d = description.match(new RegExp(format));
     return new Date(d[1], d[2] - 1, d[3]);
+}
++ dateWithShortString:(CPString) astr
+{   return astr? [[CPDate alloc] initWithShortString:astr]: nil //[CPDate new];
 }
 @end
 
@@ -252,12 +264,12 @@ TLVRulerPositionBelow = 2;
 - (CPDate)dateValueForKeyPath:(CPString)aKey
 {
     var val = [self valueForKeyPath:aKey];
-
+    
     if (![val isKindOfClass:[CPDate class]])
     {
         return [[CPDate alloc] initWithShortString:val];
     }
-
+    
     return val;
 }
 
@@ -267,11 +279,11 @@ TLVRulerPositionBelow = 2;
 {
     CPString        _timeKey @accessors(property = timeKey);
     CPString        _timeEndKey @accessors(property = timeEndKey);
-
+    
     CPString        _durationKey @accessors(property = durationKey);
     CPString        _laneKey @accessors(property = laneKey);
     CPString        _valueKey @accessors(property = valueKey);
-
+    
     CPDateFormatter _axisDateFormatter @accessors(property = axisDateFormatter);
     CPColor         _rulerTickColor @accessors(property = rulerTickColor);
     CPColor         _rulerLabelColor @accessors(property = rulerLabelColor);
@@ -281,7 +293,7 @@ TLVRulerPositionBelow = 2;
     BOOL            _shoudDrawClipscaled @accessors(property = clipScaleUpperDate);
     CPUInteger      _rulerPosition @accessors(property = rulerPosition);
     BOOL            _hideVerticalRulers @accessors(property = hideVerticalRulers);
-
+    
     // private housekeeping stuff
     CPRect           _rulerRect;
     CPArray          _timeLanes;
@@ -292,25 +304,25 @@ TLVRulerPositionBelow = 2;
 
 - (id)initWithFrame:(CGRect)aFrame
 {   if  (self = [super initWithFrame:aFrame])
-    {
-        _timeLanes = @[];
-        _axisDateFormatter = [CPDateFormatter new];
-        [_axisDateFormatter setDateStyle:CPDateFormatterShortStyle];
-        _rulerTickColor = [CPColor grayColor];
-        _rulerLabelColor = [CPColor grayColor];
-        _timeKey = 'date';
-        _timeEndKey = nil;
-        _valueKey = 'value';
-        _laneKey = 'lane';
-        _durationKey = 'duration';
-        _clipScaleLowerDate = [CPDate distantPast];
-        _clipScaleUpperDate = [CPDate distantFuture];
-
-        _selOriginOffset = CGPointMake(0, 0);
-
-        [self setRulerPosition:TLVRulerPositionAbove];
-    }
-
+{
+    _timeLanes = @[];
+    _axisDateFormatter = [CPDateFormatter new];
+    [_axisDateFormatter setDateStyle:CPDateFormatterShortStyle];
+    _rulerTickColor = [CPColor grayColor];
+    _rulerLabelColor = [CPColor grayColor];
+    _timeKey = 'date';
+    _timeEndKey = nil;
+    _valueKey = 'value';
+    _laneKey = 'lane';
+    _durationKey = 'duration';
+    _clipScaleLowerDate = [CPDate distantPast];
+    _clipScaleUpperDate = [CPDate distantFuture];
+    
+    _selOriginOffset = CGPointMake(0, 0);
+    
+    [self setRulerPosition:TLVRulerPositionAbove];
+}
+    
     return self;
 }
 - (void)setFrameSize:(CGSize)aSize
@@ -326,10 +338,10 @@ TLVRulerPositionBelow = 2;
     {
         case TLVRulerPositionAbove:
             _rulerRect = CGRectMake(_hideVerticalRulers? 0:VRULER_WIDTH, 0, _frame.size.width, RULER_HEIGHT);
-        break;
+            break;
         case TLVRulerPositionBelow:
             _rulerRect = CGRectMake(_hideVerticalRulers? 0:VRULER_WIDTH, _frame.size.height - RULER_HEIGHT, _frame.size.width, RULER_HEIGHT);
-        break;
+            break;
         default:
             _rulerRect = CGRectMake(0, 0, 0, 0);
     }
@@ -346,8 +358,9 @@ TLVRulerPositionBelow = 2;
 {
     _timeLanes.push(aTimeLane);
     [aTimeLane setLaneIdentifier:lane];
-    aTimeLane._laneColor = [CPColor colorWithHexString:[[aTimeLane class] laneColorCodes][_timeLanes.length - 1]];
-
+    var colorIndex = (_timeLanes.length - 1) % [[[aTimeLane class] laneColorCodes] count];
+    aTimeLane._laneColor = [CPColor colorWithHexString:[[[aTimeLane class] laneColorCodes] objectAtIndex:colorIndex]];
+    
     [aTimeLane setTimelineView:self];
     [self addSubview:aTimeLane];
     [self tile];
@@ -358,101 +371,112 @@ TLVRulerPositionBelow = 2;
 - (CPArray)dataForLane:(TimeLane)lane
 {
     var inarray = _laneKey? [[self objectValue] filteredArrayUsingPredicate:[CPPredicate predicateWithFormat: _laneKey+" = %@", [lane laneIdentifier]]] : [self objectValue];
-
+    
     if (![inarray respondsToSelector:@selector(sortedArrayUsingDescriptors:)])
         return;
-
-// fixme: clip by getDateRange
+    
+    // fixme: clip by getDateRange
     var sortedarray = [inarray sortedArrayUsingDescriptors:[[[CPSortDescriptor alloc] initWithKey:_valueKey ascending:YES]]];
-
-
+    
+    if (!inarray)
+        return [];
+    
     var outarray = [];
     var length = inarray.length;
     var pixelWidth = _rulerRect.size.width - (_hideVerticalRulers? 0:VRULER_WIDTH);
     var pixelHeight = lane._frame.size.height;
-
+    
     var maxY = HUGE_NUMBER * (-1),
-        minY = HUGE_NUMBER;
-
+    minY = HUGE_NUMBER;
+    
     for (var i = 0; i < length; i++)
     {   var val = [inarray[i] valueForKey:_valueKey];
         minY = MIN(minY, val);
         maxY = MAX(maxY, val);
     }
     lane._valueRange = CPMakeRange(minY, maxY - minY)
-
+    
     for (var i = 0; i < length; i++)
     {
-       var xraw = [[inarray[i] dateValueForKeyPath:_timeKey] timeIntervalSinceReferenceDate];
-       var x = ((xraw - _range.location) / _range.length) * pixelWidth + (_hideVerticalRulers? 0:VRULER_WIDTH);
-       var yraw = [inarray[i] valueForKey:_valueKey];
-       var y = pixelHeight - (((yraw - minY) / (maxY - minY)) * pixelHeight);
-       var o = {"x":x, "y":y, "value": [inarray[i] valueForKey:_valueKey]};
-
-       if (_timeEndKey)
-       {
-           var xraw1 = [[inarray[i] dateValueForKeyPath:_timeEndKey]  timeIntervalSinceReferenceDate];
-           if (xraw1 !== null)
-           {
-               var x1 = ((xraw1 - _range.location) / _range.length) * pixelWidth + (_hideVerticalRulers? 0:VRULER_WIDTH);
-               o.width = x1 - x;
-           }
-       }
-
+        var xraw = [[inarray[i] dateValueForKeyPath:_timeKey] timeIntervalSinceReferenceDate];
+        var x = ((xraw - _range.location) / _range.length) * pixelWidth + (_hideVerticalRulers? 0:VRULER_WIDTH);
+        var yraw = [inarray[i] valueForKey:_valueKey];
+        var y = pixelHeight - (((yraw - minY) / (maxY - minY)) * pixelHeight);
+        var o = {"x":x, "y":y, "value": [inarray[i] valueForKey:_valueKey]};
+        
+        if (_timeEndKey)
+        {
+            var xraw1 = [[inarray[i] dateValueForKeyPath:_timeEndKey]  timeIntervalSinceReferenceDate];
+            if (xraw1 !== null)
+            {
+                var x1 = ((xraw1 - _range.location) / _range.length) * pixelWidth + (_hideVerticalRulers? 0:VRULER_WIDTH);
+                o.width = x1 - x;
+            }
+        }
+        
         if (lane._styleFlags & TLVLaneTimePoint)
-           o.width = 0;
-
+            o.width = 0;
+        
         if(o.width !== undefined){
-           var baselineY = pixelHeight - TIME_RANGE_DEFAULT_HEIGHT - 5;
-           o.y = baselineY;
-
-           var newRect;
-
+            var baselineY = pixelHeight - TIME_RANGE_DEFAULT_HEIGHT - 5;
+            o.y = baselineY;
+            
+            var newRect;
+            
             //if point in time ->width is null->use font sizing for stacking
             if (!o.width)
             {
-               var labelSize = [o.value sizeWithFont:lane._valueFont];
-               newRect = CGRectMake(o.x - labelSize.width / 2, o.y - TIME_RANGE_DEFAULT_HEIGHT, labelSize.width, TIME_RANGE_DEFAULT_HEIGHT);
+                var labelSize = [o.value sizeWithFont:lane._valueFont];
+                if (!labelSize)
+                    continue;
+                
+                newRect = CGRectMake(o.x - labelSize.width / 2, o.y - TIME_RANGE_DEFAULT_HEIGHT, labelSize.width, TIME_RANGE_DEFAULT_HEIGHT);
             }
             else
-               newRect = CGRectMake(o.x, o.y - TIME_RANGE_DEFAULT_HEIGHT, o.width, TIME_RANGE_DEFAULT_HEIGHT);
-
-           // stack overlapping rectangles
-           var length_o = outarray.length;
-           for (var j = 0; j < length_o; j++)
-           {
-               var existingRect;
-               if (!outarray[j].width) // point in time
-               {
-                   var labelSize = [outarray[j].value sizeWithFont:lane._valueFont];
-                   existingRect = CGRectMake(outarray[j].x - labelSize.width / 2, outarray[j].y - TIME_RANGE_DEFAULT_HEIGHT, labelSize.width, TIME_RANGE_DEFAULT_HEIGHT);
-               }
-               else
-                   existingRect = CGRectMake(outarray[j].x, outarray[j].y - TIME_RANGE_DEFAULT_HEIGHT, outarray[j].width, TIME_RANGE_DEFAULT_HEIGHT);
-
-               if (CGRectIntersectsRect(newRect, existingRect) )
-                   o.y -= TIME_RANGE_DEFAULT_HEIGHT;
-           }
-       }
-       outarray.push(o);
+                newRect = CGRectMake(o.x, o.y - TIME_RANGE_DEFAULT_HEIGHT, o.width, TIME_RANGE_DEFAULT_HEIGHT);
+            
+            // stack overlapping rectangles
+            var length_o = outarray.length;
+            for (var j = 0; j < length_o; j++)
+            {
+                var existingRect;
+                if (!outarray[j].width) // point in time
+                {
+                    var labelSize = [outarray[j].value sizeWithFont:lane._valueFont];
+                    
+                    if (!labelSize)
+                        continue;
+                    
+                    existingRect = CGRectMake(outarray[j].x - labelSize.width / 2, outarray[j].y - TIME_RANGE_DEFAULT_HEIGHT, labelSize.width, TIME_RANGE_DEFAULT_HEIGHT);
+                }
+                else
+                    existingRect = CGRectMake(outarray[j].x, outarray[j].y - TIME_RANGE_DEFAULT_HEIGHT, outarray[j].width, TIME_RANGE_DEFAULT_HEIGHT);
+                
+                if (CGRectIntersectsRect(newRect, existingRect))
+                {   o.y -= TIME_RANGE_DEFAULT_HEIGHT;
+                    newRect.origin.y -= TIME_RANGE_DEFAULT_HEIGHT
+                }
+            }
+        }
+        outarray.push(o);
     }
-
+    
     var maxY = HUGE_NUMBER * (-1),
-        minY = HUGE_NUMBER,
-        length = outarray.length;
-
+    minY = HUGE_NUMBER,
+    length = outarray.length;
+    
     lane._naturalHeight = 0;
-
+    
     for (var i = 0; i < length; i++)
     {   var val = outarray[i];
         if (val.width !== undefined)
         {   minY = MIN(minY, val.y);
             maxY = MAX(maxY, val.y);
-            lane._naturalHeight = maxY - minY + TIME_RANGE_DEFAULT_HEIGHT + 8;
-            lane._naturalHeight = MAX(lane._naturalHeight, lane._minimumHeight);
+            lane._naturalHeight = maxY - minY + TIME_RANGE_DEFAULT_HEIGHT;
         }
     }
-
+    lane._naturalHeight = MAX(lane._naturalHeight, lane._minimumHeight);
+    
     return outarray;
 }
 
@@ -471,7 +495,7 @@ TLVRulerPositionBelow = 2;
     _shoudDrawClipscaled = shouldDraw;
     _range = [self getDateRange];
     [self setNeedsDisplay:YES]
-
+    
     [_timeLanes makeObjectsPerformSelector:@selector(setNeedsDisplay:) withObject:YES];
 }
 
@@ -480,48 +504,48 @@ TLVRulerPositionBelow = 2;
 {
     if (![[self objectValue] respondsToSelector:@selector(sortedArrayUsingDescriptors:)])
         return nil;
-
+    
     var sortedarray = [[self objectValue] sortedArrayUsingDescriptors:[[[CPSortDescriptor alloc] initWithKey:_timeKey ascending:YES]]];
     var min = [[[sortedarray firstObject] dateValueForKeyPath:_timeKey] timeIntervalSinceReferenceDate];
     var max = [[[sortedarray lastObject] dateValueForKeyPath:_timeKey]  timeIntervalSinceReferenceDate];
-
+    
     if (_timeEndKey)
     {
         var sortedarray = [[self objectValue] sortedArrayUsingDescriptors:[[[CPSortDescriptor alloc] initWithKey:_timeEndKey ascending:YES]]];
         var min2 = [[[sortedarray firstObject] dateValueForKeyPath:_timeEndKey] timeIntervalSinceReferenceDate];
         var max2 = [[[sortedarray lastObject] dateValueForKeyPath:_timeEndKey] timeIntervalSinceReferenceDate];
-
+        
         if (min2 !== null)
             min = MIN(min, min2);
-
+        
         if (max2 !== null)
             max = MAX(max, max2);
     }
-
+    
     if (_shoudDrawClipscaled)
     {
         min = MAX(min, [_clipScaleLowerDate timeIntervalSinceReferenceDate]);
         max = MIN(max, [_clipScaleUpperDate timeIntervalSinceReferenceDate]);
     }
-
+    
     return CPMakeRange(min, max - min);
 }
 
 - (CPUInteger)dateGranularity
 {
-
+    
     if (!_range)
         return null;
-
+    
     var daysBetween= (_range.length / (60*60*24) ) + 1;
-
+    
     if (daysBetween < 2)
-       return TLVGranularityDay;
+        return TLVGranularityDay;
     if (daysBetween < 31 * 6)
-       return TLVGranularityWeek;
+        return TLVGranularityWeek;
     if (daysBetween < 365 * 2)
-       return TLVGranularityMonth;
-
+        return TLVGranularityMonth;
+    
     return TLVGranularityYear;
 }
 
@@ -529,195 +553,198 @@ TLVRulerPositionBelow = 2;
 {
     if (CGRectContainsPoint([self _rulerRectForID:TLVRulerMarkerLeft], point))
         return TLVRulerMarkerLeft;
-
+    
     if (CGRectContainsPoint([self _rulerRectForID:TLVRulerMarkerRight], point))
         return TLVRulerMarkerRight;
-
+    
     return CPNotFound;
 }
 - (CGRect)_rulerRectForID:(TLVRulerMarkerID)rulerMarker
 {
+    if(!_range)
+        return CGRectMake(0,0,0,0);
+    
     var effectiveDate;
-
-	switch (rulerMarker)
-	{
+    
+    switch (rulerMarker)
+    {
         case TLVRulerMarkerLeft:
             effectiveDate = _clipScaleLowerDate;
-        break;
+            break;
         case TLVRulerMarkerRight:
             effectiveDate = _clipScaleUpperDate;
-        break;
-	}
+            break;
+    }
     var xraw = [effectiveDate timeIntervalSinceReferenceDate];
     var x = ((xraw - _range.location) / _range.length) * _rulerRect.size.width;
-
+    
     var rect = CGRectMake(x + (_hideVerticalRulers? 0:VRULER_WIDTH), _rulerRect.origin.y, MARKER_WIDTH, _rulerRect.size.height);
-
-	switch (rulerMarker)
-	{
+    
+    switch (rulerMarker)
+    {
         case TLVRulerMarkerRight:
             rect.origin.x -= MARKER_WIDTH;
-        break;
-	}
-
+            break;
+    }
+    
     return rect;
 }
 
 - (void)_moveRulerMarkerWithEvent:(CPEvent)event
 {	var type = [event type];
-
-	if (type == CPLeftMouseUp)
+    
+    if (type == CPLeftMouseUp)
     {
-		return;
+        return;
     }
     else if (type == CPLeftMouseDragged)
     {
-	    var mouseLocation = [self convertPoint:[event locationInWindow] fromView:nil];
+        var mouseLocation = [self convertPoint:[event locationInWindow] fromView:nil];
         var effectiveDate;
-
-	    switch (_draggingRulerMarker)
-	    {
+        
+        switch (_draggingRulerMarker)
+        {
             case TLVRulerMarkerLeft:
                 effectiveDate = _clipScaleLowerDate;
-            break;
+                break;
             case TLVRulerMarkerRight:
                 effectiveDate = _clipScaleUpperDate;
-            break;
+                break;
         }
-
+        
         if (effectiveDate)
         {
             var xraw = mouseLocation.x - (_hideVerticalRulers? 0:VRULER_WIDTH);
             xraw += _selOriginOffset.x;
             xraw /= _rulerRect.size.width;
-
+            
             var x =  xraw * _range.length + _range.location;
-
+            
             if (x < _range.location)
                 x = _range.location;
             if (x > CPMaxRange(_range))
                 x = CPMaxRange(_range);
-
-	        switch (_draggingRulerMarker)
-	        {
+            
+            switch (_draggingRulerMarker)
+            {
                 case TLVRulerMarkerLeft:
                     _clipScaleLowerDate = [CPDate dateWithTimeIntervalSinceReferenceDate:x];
-
+                    
                     if (_clipScaleLowerDate > _clipScaleUpperDate)
                         _clipScaleLowerDate = _clipScaleUpperDate
-                break;
+                        break;
                 case TLVRulerMarkerRight:
                     _clipScaleUpperDate = [CPDate dateWithTimeIntervalSinceReferenceDate:x];
-
+                    
                     if (_clipScaleUpperDate < _clipScaleLowerDate)
                         _clipScaleUpperDate = _clipScaleLowerDate;
-                break;
+                    break;
             }
             [self setNeedsDisplay:YES];
             [self autoscroll:event];
         }
     }
-
-	[CPApp setTarget:self selector:@selector(_moveRulerMarkerWithEvent:) forNextEventMatchingMask:CPLeftMouseDraggedMask | CPLeftMouseUpMask untilDate:nil inMode:nil dequeue:YES];
+    
+    [CPApp setTarget:self selector:@selector(_moveRulerMarkerWithEvent:) forNextEventMatchingMask:CPLeftMouseDraggedMask | CPLeftMouseUpMask untilDate:nil inMode:nil dequeue:YES];
 }
 
 - (void)mouseDown:(CPEvent)event
 {
-	var mouseLocation = [self convertPoint:[event locationInWindow] fromView:nil];
+    var mouseLocation = [self convertPoint:[event locationInWindow] fromView:nil];
     var rulerMarker = [self _rulerMarkerUnderPoint:mouseLocation];
-
-	switch (rulerMarker)
-	{
+    
+    switch (rulerMarker)
+    {
         case TLVRulerMarkerLeft:
         case TLVRulerMarkerRight:
             var markerFrame = [self _rulerRectForID:rulerMarker];
-		    _selOriginOffset.x = markerFrame.origin.x - mouseLocation.x + (rulerMarker == TLVRulerMarkerRight? MARKER_WIDTH : 0);
+            _selOriginOffset.x = markerFrame.origin.x - mouseLocation.x + (rulerMarker == TLVRulerMarkerRight? MARKER_WIDTH : 0);
             _draggingRulerMarker = rulerMarker;
-		    [self _moveRulerMarkerWithEvent:event];
-        break;
+            [self _moveRulerMarkerWithEvent:event];
+            break;
         default:
             var xraw = mouseLocation.x - (_hideVerticalRulers? 0:VRULER_WIDTH);
             xraw /= _rulerRect.size.width;
             var x =  xraw * _range.length + _range.location;
-
+            
             if (mouseLocation.x < _rulerRect.size.width / 2 && _clipScaleLowerDate <= [CPDate distantPast])
             {
                 _clipScaleLowerDate = [CPDate dateWithTimeIntervalSinceReferenceDate:x];
                 _draggingRulerMarker = TLVRulerMarkerLeft;
                 [self setNeedsDisplay:YES];
-		        [self _moveRulerMarkerWithEvent:event];
+                [self _moveRulerMarkerWithEvent:event];
             } else if (mouseLocation.x >= _rulerRect.size.width / 2 && _clipScaleUpperDate >= [CPDate distantPast])
             {
                 _clipScaleUpperDate = [CPDate dateWithTimeIntervalSinceReferenceDate:x];
                 _draggingRulerMarker = TLVRulerMarkerRight;
                 [self setNeedsDisplay:YES];
-		        [self _moveRulerMarkerWithEvent:event];
+                [self _moveRulerMarkerWithEvent:event];
             }
-	}
+    }
 }
 
 - (void)drawRect:(CGRect)rect
 {
     if (_rulerPosition === TLVRulerPositionNone)
         return;
-
-// <!> fixme: intersect _rulerRect with rect
+    
+    // <!> fixme: intersect _rulerRect with rect
     var ctx =  [[CPGraphicsContext currentContext] graphicsPort],
-        font = [CPFont systemFontOfSize:11];    
-
+    font = [CPFont systemFontOfSize:11];
+    
     [[CPColor whiteColor] set];
     CGContextFillRect(ctx, _rulerRect);
     
     var granularity = [self dateGranularity];
-
+    
     if (granularity === null)
         return;
-
+    
     var pixelWidth = _rulerRect.size.width - (_hideVerticalRulers? 0:VRULER_WIDTH);
     var secondsBetween;
     var axisDate = [CPDate dateWithTimeIntervalSinceReferenceDate:_range.location];
-
+    
     switch (granularity)
     {
         case TLVGranularityDay:
             secondsBetween = 60;
             [_axisDateFormatter setDateFormat:@"hh:mm:ss"];
-        break;
+            break;
         case TLVGranularityWeek:
             secondsBetween = (60*60*24);
             [_axisDateFormatter setDateFormat:@"dd.MM.YY"];
-        break;
+            break;
         case TLVGranularityMonth:
             secondsBetween = (60 * 60 * 24 * 31);
             [_axisDateFormatter setDateFormat:@"MM.YY"];
-        break;
+            break;
         default:
             secondsBetween = (60 * 60 * 24 * 366);
             [_axisDateFormatter setDateFormat:@"YYYY"];
-
+            
     }
     var numSteps = _range.length / secondsBetween;
     var gapBetween = pixelWidth / numSteps,
-        lastRightLabelX = 0;
-
+    lastRightLabelX = 0;
+    
     // draw ticks and labels for ruler
     CGContextSetStrokeColor(ctx, _rulerTickColor);
-
+    
     CGContextBeginPath(ctx);
     CGContextMoveToPoint(ctx, (_hideVerticalRulers? 0:VRULER_WIDTH), CGRectGetMaxY(_rulerRect));
     CGContextAddLineToPoint(ctx, _frame.size.width, CGRectGetMaxY(_rulerRect));
-
+    
     for (var x = _hideVerticalRulers? 0:VRULER_WIDTH; x < pixelWidth; x += gapBetween, axisDate = [axisDate dateByAddingTimeInterval:secondsBetween])
     {
         var label = [_axisDateFormatter stringFromDate:axisDate];
         var labelSize = [label sizeWithFont:font];
         var leftPoint = CGPointMake(x - labelSize.width / 2, CGRectGetMaxY(_rulerRect) - TICK_HEIGHT - labelSize.height);
-
+        
         if (leftPoint.x < _rulerRect.origin.x || leftPoint.x + labelSize.width > pixelWidth + (_hideVerticalRulers? 0:VRULER_WIDTH) || leftPoint.x < lastRightLabelX)
             continue;
-
+        
         lastRightLabelX = leftPoint.x + labelSize.width + 4;
-
+        
         CGContextMoveToPoint(ctx, x, CGRectGetMaxY(_rulerRect) - TICK_HEIGHT);
         CGContextAddLineToPoint(ctx, x, CGRectGetMaxY(_rulerRect));
         CGContextSaveGState(ctx);
@@ -730,59 +757,59 @@ TLVRulerPositionBelow = 2;
     }
     CGContextSetLineWidth(ctx, 1);
     CGContextStrokePath(ctx);
-
+    
     // draw clipscale markers
     if (_clipScaleLowerDate && _clipScaleLowerDate > [CPDate distantPast])
     {
-         var leftRect = [self _rulerRectForID:TLVRulerMarkerLeft];
-         var arrowsPath = [CPBezierPath bezierPath];
-         [arrowsPath moveToPoint:CGPointMake(leftRect.origin.x, CGRectGetMaxY(_rulerRect) - 10)];
-         [arrowsPath lineToPoint:CGPointMake(CGRectGetMaxX(leftRect), CGRectGetMaxY(_rulerRect) - 10)];
-         [arrowsPath lineToPoint:CGPointMake(leftRect.origin.x, CGRectGetMaxY(_rulerRect))];
-         [arrowsPath closePath];
-         CGContextSetFillColor(ctx, [[CPColor blueColor] set]);
-         [arrowsPath fill];
-
+        var leftRect = [self _rulerRectForID:TLVRulerMarkerLeft];
+        var arrowsPath = [CPBezierPath bezierPath];
+        [arrowsPath moveToPoint:CGPointMake(leftRect.origin.x, CGRectGetMaxY(_rulerRect) - 10)];
+        [arrowsPath lineToPoint:CGPointMake(CGRectGetMaxX(leftRect), CGRectGetMaxY(_rulerRect) - 10)];
+        [arrowsPath lineToPoint:CGPointMake(leftRect.origin.x, CGRectGetMaxY(_rulerRect))];
+        [arrowsPath closePath];
+        CGContextSetFillColor(ctx, [[CPColor blueColor] set]);
+        [arrowsPath fill];
+        
     }
     if (_clipScaleUpperDate && _clipScaleUpperDate < [CPDate distantFuture])
     {
-         var rightRect = [self _rulerRectForID:TLVRulerMarkerRight];
-         var arrowsPath = [CPBezierPath bezierPath];
-         [arrowsPath moveToPoint:CGPointMake(CGRectGetMaxX(rightRect), CGRectGetMaxY(_rulerRect) - 10)];
-         [arrowsPath lineToPoint:CGPointMake(rightRect.origin.x, CGRectGetMaxY(_rulerRect) - 10)];
-         [arrowsPath lineToPoint:CGPointMake(CGRectGetMaxX(rightRect), CGRectGetMaxY(_rulerRect))];
-         [arrowsPath closePath];
-         CGContextSetFillColor(ctx, [[CPColor blueColor] set]);
-         [arrowsPath fill];
+        var rightRect = [self _rulerRectForID:TLVRulerMarkerRight];
+        var arrowsPath = [CPBezierPath bezierPath];
+        [arrowsPath moveToPoint:CGPointMake(CGRectGetMaxX(rightRect), CGRectGetMaxY(_rulerRect) - 10)];
+        [arrowsPath lineToPoint:CGPointMake(rightRect.origin.x, CGRectGetMaxY(_rulerRect) - 10)];
+        [arrowsPath lineToPoint:CGPointMake(CGRectGetMaxX(rightRect), CGRectGetMaxY(_rulerRect))];
+        [arrowsPath closePath];
+        CGContextSetFillColor(ctx, [[CPColor blueColor] set]);
+        [arrowsPath fill];
     }
 }
 
 - (void)tile
 {
     if (!_rulerRect)
-        return; 
-
-   var laneCount = [_timeLanes count],
-       currentOrigin = CGPointMake(0, (_rulerPosition == TLVRulerPositionAbove? CGRectGetMaxY(_rulerRect) : 0)),
-       totalHeight = _frame.size.height,
-       fixedCount = 0;
-
+        return;
+    
+    var laneCount = [_timeLanes count],
+    currentOrigin = CGPointMake(0, (_rulerPosition == TLVRulerPositionAbove? CGRectGetMaxY(_rulerRect) : 0)),
+    totalHeight = _frame.size.height,
+    fixedCount = 0;
+    
     for (var i = 0; i < laneCount; i++)
     {
         var currentLane = [_timeLanes objectAtIndex:i];
-
+        
         // this is expensive. run this only when stacking can happen
         if (currentLane._styleFlags & (TLVLaneTimePoint|TLVLaneLaneLabel) && currentLane._naturalHeight === undefined)
             [self dataForLane:currentLane];  // calculate height and cache in _naturalHeight;
-
+        
         if (currentLane._naturalHeight)
         {   totalHeight -= currentLane._naturalHeight;
             fixedCount++;
         }
     }
-
+    
     var laneHeight = (totalHeight - _rulerRect.size.height) / (laneCount - fixedCount);
-
+    
     for (var i = 0; i < laneCount; i++)
     {
         var currentLane = [_timeLanes objectAtIndex:i];
